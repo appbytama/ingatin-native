@@ -127,7 +127,7 @@ export type TripExpenseShare = {
 // Function (D:\APP\ingatin\supabase\functions\assistant), not the PWA's
 // deployed app. Scoped to reminder/checklist only for v1 (no trip actions
 // yet, see the roadmap plan).
-export type ChatMessageRef = { id: string; kind: "reminder" | "checklist"; title: string };
+export type ChatMessageRef = { id: string; kind: "reminder" | "checklist" | "trip"; title: string; checklistId?: string };
 
 export type AssistantChatMessage = {
   role: "user" | "assistant";
@@ -137,9 +137,10 @@ export type AssistantChatMessage = {
 };
 
 export type AssistantDraft = {
-  kind: "reminder" | "checklist";
+  kind: "reminder" | "checklist" | "trip";
   id: string;
   title: string;
+  tripId?: string;
 };
 
 export type AssistantTurnResult = {

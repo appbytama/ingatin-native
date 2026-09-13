@@ -33,7 +33,11 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
         {tab === 'checklists' && <ChecklistsScreen />}
         {tab === 'trips' && <TripsScreen />}
         {tab === 'chat' && (
-          <ChatScreen onNavigateToRef={(ref: ChatMessageRef) => setTab(ref.kind === 'reminder' ? 'reminders' : 'checklists')} />
+          <ChatScreen
+            onNavigateToRef={(ref: ChatMessageRef) =>
+              setTab(ref.kind === 'reminder' ? 'reminders' : ref.kind === 'trip' ? 'trips' : 'checklists')
+            }
+          />
         )}
       </View>
 

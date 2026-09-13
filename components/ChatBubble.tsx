@@ -19,7 +19,7 @@ export default function ChatBubble({
           {message.refs.map((ref) => (
             <Pressable key={ref.id} style={styles.refChip} onPress={() => onRefPress(ref)}>
               <Text style={styles.refChipText}>
-                {ref.kind === 'reminder' ? '⏰' : '📋'} {ref.title}
+                {ref.kind === 'reminder' ? '⏰' : ref.kind === 'trip' ? '🧳' : '📋'} {ref.title}
               </Text>
             </Pressable>
           ))}
