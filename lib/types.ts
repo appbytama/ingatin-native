@@ -33,6 +33,39 @@ export type Category = {
   deleted_at: string | null;
 };
 
+export type ChecklistStatus = "active" | "archived";
+
+export type ChecklistItem = {
+  id: string;
+  checklist_id: string;
+  label: string;
+  is_checked: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+  deleted_at: string | null;
+};
+
+export type Checklist = {
+  id: string;
+  user_id: string;
+  category_id: string | null;
+  template_source_id: string | null;
+  trip_id: string | null;
+  is_private: boolean;
+  title: string;
+  target_date: string | null;
+  is_recurring: boolean;
+  recurrence_rule: RecurrenceRule | null;
+  status: ChecklistStatus;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  categories: Pick<Category, "name" | "icon"> | null;
+  checklist_items: ChecklistItem[];
+};
+
 export type Reminder = {
   id: string;
   user_id: string;

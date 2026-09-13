@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import AuthScreen from './screens/AuthScreen';
-import HomeScreen from './screens/HomeScreen';
+import AuthenticatedApp from './screens/AuthenticatedApp';
 
 // Supabase's token refresh runs on a timer that keeps firing in the
 // background unless paused — this stops it while the app isn't foregrounded.
@@ -35,7 +35,7 @@ export default function App() {
 
   return (
     <>
-      {!loading && (session ? <HomeScreen session={session} /> : <AuthScreen />)}
+      {!loading && (session ? <AuthenticatedApp session={session} /> : <AuthScreen />)}
       <StatusBar style="auto" />
     </>
   );
