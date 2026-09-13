@@ -2,20 +2,24 @@
 // Intl.DateTimeFormat's timeZone option handles this natively, so unlike
 // lib/tz.ts (needed for date *arithmetic* to match the parser's business
 // logic) display formatting doesn't need the manual offset trick.
-const dateTimeFormatter = new Intl.DateTimeFormat('id-ID', {
-  timeZone: 'Asia/Jakarta',
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
-const timeFormatter = new Intl.DateTimeFormat('id-ID', {
+//
+// Time fields specifically use 'en-GB', not 'id-ID' — Intl's id-ID locale
+// formats time with a "." separator (Indonesia's own convention), but the
+// PWA uses date-fns' HH:mm, always a colon regardless of locale. en-GB
+// happens to format 24h time the same way and was verified to produce
+// "08:00", not "08.00".
+const dateTimeFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Jakarta',
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
+});
+
+const dayMonthFormatter = new Intl.DateTimeFormat('id-ID', {
+  timeZone: 'Asia/Jakarta',
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
 });
 
 const dateHeaderFormatter = new Intl.DateTimeFormat('id-ID', {
@@ -33,14 +37,18 @@ const jakartaDateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 });
 
+/** "Sel, 14 Sep 08:00" — full day+time, used where a date and time both
+ *  need to show together outside a date-grouped list (e.g. a date/time
+ *  picker button). */
 export function formatReminderDueAt(iso: string): string {
-  return dateTimeFormatter.format(new Date(iso));
+  const date = new Date(iso);
+  return `${dayMonthFormatter.format(date)} ${dateTimeFormatter.format(date)}`;
 }
 
 /** Just the time, e.g. "08:00" — matches the PWA's per-card time badge
  *  (the date itself is shown once per group, not repeated per card). */
 export function formatReminderTime(iso: string): string {
-  return timeFormatter.format(new Date(iso));
+  return dateTimeFormatter.format(new Date(iso));
 }
 
 /** "yyyy-mm-dd" in Jakarta wall-clock time — for grouping reminders by day. */

@@ -5,26 +5,15 @@ import { supabase } from '../lib/supabase';
 import { getUpcomingReminders, setReminderStatus, snoozeReminder, deleteReminder } from '../lib/reminders';
 import { getActiveChecklists } from '../lib/checklists';
 import type { Reminder, Checklist } from '../lib/types';
-import { formatDateHeader, jakartaDateKey, relativeDayLabel } from '../lib/format';
-import ReminderRow from '../components/ReminderRow';
+import ReminderTimeline from '../components/ReminderTimeline';
 import ChecklistCard from '../components/ChecklistCard';
-import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
-
-function groupByDate(reminders: Reminder[]) {
-  const map = new Map<string, Reminder[]>();
-  for (const r of reminders) {
-    const key = jakartaDateKey(r.due_at);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(r);
-  }
-  return [...map.entries()].map(([dateKey, items]) => ({ dateKey, items }));
-}
+import { useTheme, space, radius, fontSize, type Theme } from '../lib/theme';
 
 // Mirrors the PWA's Home page ("/", read off its live DOM): greeting, a
-// timeline of reminders due in the next 24h grouped by date (connecting
-// line + dot per PWA's own markup), and a checklist summary section. Unlike
-// the PWA, this app has no separate detail page yet, so snooze/delete stay
-// as inline row actions instead of opening a detail sheet.
+// timeline of reminders due in the next 24h grouped by date, and a
+// checklist summary section. Unlike the PWA, this app has no separate
+// detail page yet, so snooze/delete stay as inline row actions instead of
+// opening a detail sheet.
 export default function HomeScreen({ userId, onOpenBabel }: { userId: string; onOpenBabel: () => void }) {
   const theme = useTheme();
   const styles = makeStyles(theme);
@@ -90,8 +79,6 @@ export default function HomeScreen({ userId, onOpenBabel }: { userId: string; on
     ]);
   }
 
-  const groups = groupByDate(reminders);
-
   return (
     <ScrollView
       style={styles.container}
@@ -109,42 +96,17 @@ export default function HomeScreen({ userId, onOpenBabel }: { userId: string; on
           <Text style={styles.sectionHeadingText}>Jadwal {nickname} 24 Jam ke Depan</Text>
         </View>
 
-        {groups.length === 0 ? (
-          <Text
-            style={styles.emptyCard}
-            onPress={onOpenBabel}
-          >
+        {reminders.length === 0 ? (
+          <Text style={styles.emptyCard} onPress={onOpenBabel}>
             Belum ada reminder dalam 24 jam ke depan. Chat sama aku buat bikin satu 👋
           </Text>
         ) : (
-          <View style={styles.timeline}>
-            <View style={styles.timelineLine} />
-            {groups.map((group) => {
-              const relLabel = relativeDayLabel(group.dateKey);
-              return (
-                <View key={group.dateKey} style={styles.timelineGroup}>
-                  <View style={styles.timelineDot} />
-                  <View style={styles.dateHeaderRow}>
-                    <Text style={styles.dateHeaderText}>{formatDateHeader(group.dateKey)}</Text>
-                    {relLabel && (
-                      <View style={styles.relBadge}>
-                        <Text style={styles.relBadgeText}>{relLabel}</Text>
-                      </View>
-                    )}
-                  </View>
-                  {group.items.map((item) => (
-                    <ReminderRow
-                      key={item.id}
-                      reminder={item}
-                      onToggleDone={() => handleToggleDone(item)}
-                      onSnooze={() => handleSnooze(item)}
-                      onDelete={() => handleDelete(item)}
-                    />
-                  ))}
-                </View>
-              );
-            })}
-          </View>
+          <ReminderTimeline
+            reminders={reminders}
+            onToggleDone={handleToggleDone}
+            onSnooze={handleSnooze}
+            onDelete={handleDelete}
+          />
         )}
       </View>
 
@@ -209,55 +171,6 @@ function makeStyles(theme: Theme) {
       fontSize: fontSize.sm,
       color: theme.color.textMuted,
       overflow: 'hidden',
-    },
-    timeline: {
-      position: 'relative',
-      paddingLeft: space.xl + space.xs,
-      gap: space.lg,
-    },
-    timelineLine: {
-      position: 'absolute',
-      left: 7,
-      top: 8,
-      bottom: 8,
-      width: 1,
-      backgroundColor: theme.color.border,
-    },
-    timelineGroup: {
-      position: 'relative',
-    },
-    timelineDot: {
-      position: 'absolute',
-      left: -(space.xl + space.xs) + 2,
-      top: 4,
-      width: 14,
-      height: 14,
-      borderRadius: 7,
-      borderWidth: 2,
-      borderColor: theme.color.background,
-      backgroundColor: theme.color.checkboxBorder,
-    },
-    dateHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.xs + 2,
-      marginBottom: space.sm,
-    },
-    dateHeaderText: {
-      fontSize: fontSize.xs,
-      fontWeight: '600',
-      color: theme.color.primarySoftTextStrong,
-    },
-    relBadge: {
-      borderRadius: radius.pill,
-      backgroundColor: theme.color.primarySoftBgMid,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    relBadgeText: {
-      fontSize: fontSize.tiny,
-      fontWeight: '600',
-      color: theme.color.primarySoftText,
     },
   });
 }

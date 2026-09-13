@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Bell, KeyRound, ListChecks } from 'lucide-react-native';
 import { getAllReminders, setReminderStatus, snoozeReminder, deleteReminder } from '../lib/reminders';
 import { getActiveChecklists } from '../lib/checklists';
 import type { Reminder, Checklist } from '../lib/types';
-import ReminderRow from '../components/ReminderRow';
+import ReminderTimeline from '../components/ReminderTimeline';
 import ChecklistCard from '../components/ChecklistCard';
 import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
@@ -115,27 +115,25 @@ export default function SemuaScreen() {
       </View>
 
       {tab === 'reminder' ? (
-        <FlatList
-          data={reminders}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={
-            <Pressable style={styles.joinCard} onPress={handleJoinByCode}>
-              <KeyRound size={iconSize.sm} color={theme.color.textMuted} />
-              <Text style={styles.joinCardText}>Punya kode undangan? Gabung di sini</Text>
-            </Pressable>
-          }
-          ListEmptyComponent={!loading ? <Text style={styles.empty}>Tidak ada reminder aktif.</Text> : null}
-          renderItem={({ item }) => (
-            <ReminderRow
-              reminder={item}
-              onToggleDone={() => handleToggleDone(item)}
-              onSnooze={() => handleSnooze(item)}
-              onDelete={() => handleDelete(item)}
+        <ScrollView
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.color.primary} />}
+        >
+          <Pressable style={styles.joinCard} onPress={handleJoinByCode}>
+            <KeyRound size={iconSize.sm} color={theme.color.textMuted} />
+            <Text style={styles.joinCardText}>Punya kode undangan? Gabung di sini</Text>
+          </Pressable>
+          {reminders.length === 0 ? (
+            !loading && <Text style={styles.empty}>Tidak ada reminder aktif.</Text>
+          ) : (
+            <ReminderTimeline
+              reminders={reminders}
+              onToggleDone={handleToggleDone}
+              onSnooze={handleSnooze}
+              onDelete={handleDelete}
             />
           )}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.color.primary} />}
-          contentContainerStyle={styles.listContent}
-        />
+        </ScrollView>
       ) : (
         <FlatList
           data={checklists}

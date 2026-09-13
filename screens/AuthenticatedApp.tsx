@@ -3,11 +3,12 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, ListChecks, Plane, Settings, Share2 } from 'lucide-react-native';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
 import HomeScreen from './HomeScreen';
 import SemuaScreen from './SemuaScreen';
 import TripsScreen from './TripsScreen';
+import SettingsScreen from './SettingsScreen';
 import BabelPanel from '../components/BabelPanel';
+import BabelFab from '../components/BabelFab';
 import type { ChatMessageRef } from '../lib/types';
 import { useTheme, space, fontSize, type Theme } from '../lib/theme';
 
@@ -17,14 +18,22 @@ type Tab = 'semua' | 'home' | 'trip';
 // (brand text-button + share icon, avatar with a settings badge), a 3-tab
 // bottom nav with the home ("Ingatin") tab raised in an elevated circle,
 // and Babel as a floating button + bottom sheet — NOT a 4th tab, which is
-// how this app had it before. The avatar has no Pengaturan screen to link
-// to yet, so it still just signs out.
+// how this app had it before. The avatar opens Pengaturan (Settings) as an
+// overlay on top of whichever tab was last active — same as the PWA, whose
+// bottom nav keeps its previous highlight while on /pengaturan rather than
+// showing none active.
 export default function AuthenticatedApp({ session }: { session: Session }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const styles = makeStyles(theme);
   const [tab, setTab] = useState<Tab>('home');
+  const [showSettings, setShowSettings] = useState(false);
   const [babelOpen, setBabelOpen] = useState(false);
+
+  function switchTab(next: Tab) {
+    setShowSettings(false);
+    setTab(next);
+  }
 
   const nickname = (session.user.user_metadata?.nickname as string | undefined) || session.user.email?.split('@')[0] || '?';
   const initial = nickname.charAt(0).toUpperCase();
@@ -41,7 +50,7 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
           <Text style={styles.brandText}>ingatin.my.id</Text>
           <Share2 size={13} color={theme.color.textMuted} />
         </Pressable>
-        <Pressable style={styles.avatarWrap} onPress={() => supabase.auth.signOut()} accessibilityLabel="Profil & Pengaturan">
+        <Pressable style={styles.avatarWrap} onPress={() => setShowSettings(true)} accessibilityLabel="Profil & Pengaturan">
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
@@ -52,37 +61,35 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
       </View>
 
       <View style={styles.content}>
-        {tab === 'semua' && <SemuaScreen />}
-        {tab === 'home' && <HomeScreen userId={session.user.id} onOpenBabel={() => setBabelOpen(true)} />}
-        {tab === 'trip' && <TripsScreen />}
+        {showSettings ? (
+          <SettingsScreen session={session} />
+        ) : (
+          <>
+            {tab === 'semua' && <SemuaScreen />}
+            {tab === 'home' && <HomeScreen userId={session.user.id} onOpenBabel={() => setBabelOpen(true)} />}
+            {tab === 'trip' && <TripsScreen />}
+          </>
+        )}
       </View>
 
       <View style={[styles.tabBar, { paddingBottom: insets.bottom + space.sm }]}>
-        <Pressable style={styles.tabButton} onPress={() => setTab('semua')}>
-          <ListChecks size={22} color={tab === 'semua' ? theme.color.primary : theme.color.textMuted} />
-          <Text style={[styles.tabLabel, tab === 'semua' && styles.tabLabelActive]}>Semua</Text>
+        <Pressable style={styles.tabButton} onPress={() => switchTab('semua')}>
+          <ListChecks size={22} color={tab === 'semua' && !showSettings ? theme.color.primary : theme.color.textMuted} />
+          <Text style={[styles.tabLabel, tab === 'semua' && !showSettings && styles.tabLabelActive]}>Semua</Text>
         </Pressable>
-        <Pressable style={styles.tabButton} onPress={() => setTab('home')}>
+        <Pressable style={styles.tabButton} onPress={() => switchTab('home')}>
           <View style={styles.homeIconWrap}>
-            <Bell size={22} color={tab === 'home' ? theme.color.primary : theme.color.textMuted} />
+            <Bell size={22} color={tab === 'home' && !showSettings ? theme.color.primary : theme.color.textMuted} />
           </View>
-          <Text style={[styles.tabLabel, tab === 'home' && styles.tabLabelActive]}>Ingatin</Text>
+          <Text style={[styles.tabLabel, tab === 'home' && !showSettings && styles.tabLabelActive]}>Ingatin</Text>
         </Pressable>
-        <Pressable style={styles.tabButton} onPress={() => setTab('trip')}>
-          <Plane size={22} color={tab === 'trip' ? theme.color.primary : theme.color.textMuted} />
-          <Text style={[styles.tabLabel, tab === 'trip' && styles.tabLabelActive]}>Ngetrip</Text>
+        <Pressable style={styles.tabButton} onPress={() => switchTab('trip')}>
+          <Plane size={22} color={tab === 'trip' && !showSettings ? theme.color.primary : theme.color.textMuted} />
+          <Text style={[styles.tabLabel, tab === 'trip' && !showSettings && styles.tabLabelActive]}>Ngetrip</Text>
         </Pressable>
       </View>
 
-      {!babelOpen && (
-        <Pressable
-          style={[styles.fab, { bottom: insets.bottom + 78 }]}
-          onPress={() => setBabelOpen(true)}
-          accessibilityLabel="Buka asisten Ingatin"
-        >
-          <Bell size={24} color={theme.color.onPrimary} />
-        </Pressable>
-      )}
+      {!babelOpen && <BabelFab onPress={() => setBabelOpen(true)} bottomInset={insets.bottom} />}
 
       <Modal visible={babelOpen} transparent animationType="slide" onRequestClose={() => setBabelOpen(false)}>
         <View style={styles.modalRoot}>
@@ -191,21 +198,6 @@ function makeStyles(theme: Theme) {
     },
     tabLabelActive: {
       color: theme.color.primary,
-    },
-    fab: {
-      position: 'absolute',
-      right: space.lg,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: theme.color.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: theme.color.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.35,
-      shadowRadius: 10,
-      elevation: 6,
     },
     modalRoot: {
       flex: 1,

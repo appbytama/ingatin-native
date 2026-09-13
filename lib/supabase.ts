@@ -1,5 +1,6 @@
 import "react-native-url-polyfill/auto";
 import "react-native-get-random-values";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as aesjs from "aes-js";
@@ -60,9 +61,14 @@ class LargeSecureStore {
   }
 }
 
+// expo-secure-store has no web implementation at all (throws at call time,
+// not just a no-op) — this app never ships a web build, but Fase 4's UI
+// parity pass runs the app under `expo start --web` to compare against the
+// PWA side by side, so plain AsyncStorage (no encryption) stands in there.
+// Native iOS/Android always get the real LargeSecureStore.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: new LargeSecureStore(),
+    storage: Platform.OS === "web" ? AsyncStorage : new LargeSecureStore(),
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

@@ -14,3 +14,23 @@ export async function getCategories(userId: string): Promise<Category[]> {
   if (error) throw error;
   return data;
 }
+
+export async function createCategory(userId: string, name: string, icon?: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("categories")
+    .insert({ user_id: userId, name: name.trim(), icon: icon || "📁" })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function deleteCategory(id: string) {
+  const { error } = await supabase
+    .from("categories")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) throw error;
+}

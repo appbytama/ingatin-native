@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, Clock, Trash2 } from 'lucide-react-native';
 import type { Reminder } from '../lib/types';
-import { formatReminderDueAt, formatReminderTime } from '../lib/format';
+import { formatReminderTime } from '../lib/format';
 import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
 // Mirrors the PWA's reminder card exactly (read off its live DOM,
