@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
@@ -34,9 +35,9 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <SafeAreaProvider>
       {!loading && (session ? <AuthenticatedApp session={session} /> : <AuthScreen />)}
       <StatusBar style="auto" />
-    </>
+    </SafeAreaProvider>
   );
 }

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -9,8 +11,11 @@ import {
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { signInWithGoogle } from '../lib/googleAuth';
+import { useTheme, space, radius, fontSize, type Theme } from '../lib/theme';
 
 export default function AuthScreen() {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,115 +57,153 @@ export default function AuthScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <Text style={styles.title}>Ingatin</Text>
+      <Text style={styles.tagline}>Kamu fokus menjalani. Aku yang ingat.</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor={theme.color.textMuted}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoComplete="email"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={theme.color.textMuted}
+          secureTextEntry
+          autoComplete="password"
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <Pressable
-        style={styles.primaryButton}
-        onPress={handleEmailSubmit}
-        disabled={loading || !email || !password}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.primaryButtonText}>
-            {mode === 'login' ? 'Masuk' : 'Daftar'}
+        <Pressable
+          style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, (loading || !email || !password) && styles.disabled]}
+          onPress={handleEmailSubmit}
+          disabled={loading || !email || !password}
+        >
+          {loading ? (
+            <ActivityIndicator color={theme.color.onPrimary} />
+          ) : (
+            <Text style={styles.primaryButtonText}>{mode === 'login' ? 'Masuk' : 'Daftar'}</Text>
+          )}
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.googleButton, pressed && styles.pressed, loading && styles.disabled]}
+          onPress={handleGoogleSubmit}
+          disabled={loading}
+        >
+          <Text style={styles.googleButtonText}>Lanjut dengan Google</Text>
+        </Pressable>
+
+        {message ? <Text style={styles.message}>{message}</Text> : null}
+
+        <Pressable
+          hitSlop={10}
+          onPress={() => {
+            setMode(mode === 'login' ? 'register' : 'login');
+            setMessage(null);
+          }}
+        >
+          <Text style={styles.switchModeText}>
+            {mode === 'login' ? 'Belum punya akun? Daftar' : 'Sudah punya akun? Masuk'}
           </Text>
-        )}
-      </Pressable>
-
-      <Pressable
-        style={styles.googleButton}
-        onPress={handleGoogleSubmit}
-        disabled={loading}
-      >
-        <Text style={styles.googleButtonText}>Lanjut dengan Google</Text>
-      </Pressable>
-
-      {message ? <Text style={styles.message}>{message}</Text> : null}
-
-      <Pressable
-        onPress={() => {
-          setMode(mode === 'login' ? 'register' : 'login');
-          setMessage(null);
-        }}
-      >
-        <Text style={styles.switchModeText}>
-          {mode === 'login'
-            ? 'Belum punya akun? Daftar'
-            : 'Sudah punya akun? Masuk'}
-        </Text>
-      </Pressable>
-    </View>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    padding: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  input: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  primaryButton: {
-    width: '100%',
-    backgroundColor: '#111',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  googleButton: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  googleButtonText: {
-    fontWeight: '600',
-  },
-  message: {
-    color: '#b00020',
-    textAlign: 'center',
-  },
-  switchModeText: {
-    color: '#555',
-    marginTop: 8,
-  },
-});
+function makeStyles(theme: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.color.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: space.xxl,
+    },
+    title: {
+      fontSize: fontSize.xl + 4,
+      fontWeight: '700',
+      color: theme.color.text,
+    },
+    tagline: {
+      fontSize: fontSize.sm,
+      color: theme.color.textMuted,
+      marginTop: 4,
+      marginBottom: space.xxl,
+    },
+    form: {
+      width: '100%',
+      gap: space.md,
+    },
+    input: {
+      width: '100%',
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.md,
+      paddingHorizontal: space.md,
+      paddingVertical: space.md,
+      fontSize: fontSize.base,
+      color: theme.color.text,
+      backgroundColor: theme.color.surface,
+      minHeight: 44,
+    },
+    primaryButton: {
+      width: '100%',
+      backgroundColor: theme.color.primary,
+      borderRadius: radius.md,
+      paddingVertical: space.md,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+    disabled: {
+      opacity: 0.5,
+    },
+    primaryButtonText: {
+      color: theme.color.onPrimary,
+      fontWeight: '600',
+      fontSize: fontSize.base,
+    },
+    googleButton: {
+      width: '100%',
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.md,
+      paddingVertical: space.md,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    googleButtonText: {
+      fontWeight: '600',
+      color: theme.color.text,
+      fontSize: fontSize.base,
+    },
+    message: {
+      color: theme.color.destructive,
+      textAlign: 'center',
+      fontSize: fontSize.sm,
+    },
+    switchModeText: {
+      color: theme.color.textMuted,
+      marginTop: space.xs,
+      textAlign: 'center',
+      fontSize: fontSize.sm,
+    },
+  });
+}

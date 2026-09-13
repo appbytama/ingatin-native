@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Check, ClipboardList, Plus, Trash2, X } from 'lucide-react-native';
 import type { Checklist } from '../lib/types';
 import { addChecklistItem, deleteChecklist, deleteChecklistItem, toggleChecklistItem } from '../lib/checklists';
+import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
 export default function ChecklistCard({ checklist, onChanged }: { checklist: Checklist; onChanged: () => void }) {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const [newItem, setNewItem] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -61,23 +65,32 @@ export default function ChecklistCard({ checklist, onChanged }: { checklist: Che
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.title} numberOfLines={1}>
-          {checklist.categories ? `${checklist.categories.icon} ` : '📋 '}
-          {checklist.title}
-        </Text>
-        <Pressable onPress={handleDeleteChecklist} hitSlop={8}>
-          <Text style={styles.deleteIcon}>🗑️</Text>
+        <View style={styles.titleRow}>
+          {!checklist.categories && <ClipboardList size={iconSize.sm} color={theme.color.primary} />}
+          <Text style={styles.title} numberOfLines={1}>
+            {checklist.categories ? `${checklist.categories.icon} ` : ''}
+            {checklist.title}
+          </Text>
+        </View>
+        <Pressable onPress={handleDeleteChecklist} hitSlop={10} accessibilityLabel="Hapus checklist">
+          <Trash2 size={iconSize.sm} color={theme.color.textMuted} />
         </Pressable>
       </View>
 
       {checklist.checklist_items.map((item) => (
         <View key={item.id} style={styles.itemRow}>
-          <Pressable style={styles.itemCheckbox} onPress={() => handleToggle(item.id, item.is_checked)} hitSlop={8}>
-            <Text style={styles.itemCheckboxMark}>{item.is_checked ? '✓' : ''}</Text>
+          <Pressable
+            style={[styles.itemCheckbox, item.is_checked && styles.itemCheckboxChecked]}
+            onPress={() => handleToggle(item.id, item.is_checked)}
+            hitSlop={10}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: item.is_checked }}
+          >
+            {item.is_checked && <Check size={12} color={theme.color.onPrimary} strokeWidth={3} />}
           </Pressable>
           <Text style={[styles.itemLabel, item.is_checked && styles.itemLabelChecked]}>{item.label}</Text>
-          <Pressable onPress={() => handleDeleteItem(item.id)} hitSlop={8}>
-            <Text style={styles.itemDelete}>✕</Text>
+          <Pressable onPress={() => handleDeleteItem(item.id)} hitSlop={10} accessibilityLabel="Hapus item">
+            <X size={14} color={theme.color.textMuted} />
           </Pressable>
         </View>
       ))}
@@ -86,92 +99,91 @@ export default function ChecklistCard({ checklist, onChanged }: { checklist: Che
         <TextInput
           style={styles.addItemInput}
           placeholder="Tambah item…"
+          placeholderTextColor={theme.color.textMuted}
           value={newItem}
           onChangeText={setNewItem}
           onSubmitEditing={handleAddItem}
           editable={!saving}
         />
-        <Pressable onPress={handleAddItem} disabled={saving || !newItem.trim()}>
-          <Text style={styles.addItemButton}>+</Text>
+        <Pressable onPress={handleAddItem} disabled={saving || !newItem.trim()} hitSlop={10} accessibilityLabel="Tambah item">
+          <Plus size={iconSize.md} color={theme.color.primary} />
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#f7f7f7',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    gap: 6,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '700',
-    flex: 1,
-  },
-  deleteIcon: {
-    fontSize: 16,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  itemCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#999',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemCheckboxMark: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  itemLabel: {
-    flex: 1,
-    fontSize: 13,
-  },
-  itemLabelChecked: {
-    textDecorationLine: 'line-through',
-    color: '#999',
-  },
-  itemDelete: {
-    color: '#999',
-    fontSize: 13,
-    paddingHorizontal: 4,
-  },
-  addItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 6,
-  },
-  addItemInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 13,
-    backgroundColor: '#fff',
-  },
-  addItemButton: {
-    fontSize: 20,
-    fontWeight: '700',
-    paddingHorizontal: 6,
-  },
-});
+function makeStyles(theme: Theme) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: theme.color.surface,
+      borderRadius: radius.lg,
+      padding: space.md,
+      marginBottom: space.md,
+      gap: space.xs,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: space.xs,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.xs,
+      flex: 1,
+    },
+    title: {
+      fontSize: fontSize.md,
+      fontWeight: '700',
+      color: theme.color.text,
+      flex: 1,
+    },
+    itemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.sm,
+      paddingVertical: space.xs,
+    },
+    itemCheckbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.color.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    itemCheckboxChecked: {
+      backgroundColor: theme.color.primary,
+      borderColor: theme.color.primary,
+    },
+    itemLabel: {
+      flex: 1,
+      fontSize: fontSize.sm,
+      color: theme.color.text,
+    },
+    itemLabelChecked: {
+      textDecorationLine: 'line-through',
+      color: theme.color.textMuted,
+    },
+    addItemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.sm,
+      marginTop: space.xs,
+    },
+    addItemInput: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.sm,
+      paddingHorizontal: space.sm,
+      paddingVertical: space.sm,
+      fontSize: fontSize.sm,
+      backgroundColor: theme.color.background,
+      color: theme.color.text,
+    },
+  });
+}

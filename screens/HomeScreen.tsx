@@ -4,8 +4,11 @@ import { getAllReminders, setReminderStatus, snoozeReminder, deleteReminder } fr
 import type { Reminder } from '../lib/types';
 import QuickAddReminder from '../components/QuickAddReminder';
 import ReminderRow from '../components/ReminderRow';
+import { useTheme, space, fontSize, type Theme } from '../lib/theme';
 
 export default function HomeScreen({ userId }: { userId: string }) {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,28 +87,32 @@ export default function HomeScreen({ userId }: { userId: string }) {
             onDelete={() => handleDelete(item)}
           />
         )}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.color.primary} />}
         contentContainerStyle={styles.listContent}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  listContent: {
-    padding: 16,
-  },
-  error: {
-    color: '#b00020',
-    marginBottom: 8,
-  },
-  empty: {
-    color: '#888',
-    textAlign: 'center',
-    marginTop: 24,
-  },
-});
+function makeStyles(theme: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.color.background,
+    },
+    listContent: {
+      padding: space.lg,
+    },
+    error: {
+      color: theme.color.destructive,
+      marginBottom: space.sm,
+      fontSize: fontSize.sm,
+    },
+    empty: {
+      color: theme.color.textMuted,
+      textAlign: 'center',
+      marginTop: space.xxl,
+      fontSize: fontSize.sm,
+    },
+  });
+}

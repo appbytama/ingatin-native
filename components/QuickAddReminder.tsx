@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { CalendarClock } from 'lucide-react-native';
 import { parseQuickAdd } from '../lib/parser/local';
 import { createReminder } from '../lib/reminders';
 import { getCategories } from '../lib/categories';
 import type { Category, RecurrenceRule } from '../lib/types';
 import { formatReminderDueAt } from '../lib/format';
+import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
 const RECURRENCE_OPTIONS: { type: RecurrenceRule['type']; label: string }[] = [
   { type: 'none', label: 'Sekali saja' },
@@ -22,6 +24,8 @@ const RECURRENCE_OPTIONS: { type: RecurrenceRule['type']; label: string }[] = [
 // kind of clarifying-question flow actually belongs) — for now, anchor
 // reminders just fall back to plain manual date entry.
 export default function QuickAddReminder({ userId, onCreated }: { userId: string; onCreated: () => void }) {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const [text, setText] = useState('');
   const [title, setTitle] = useState('');
   const [dueAt, setDueAt] = useState<Date | null>(null);
@@ -120,6 +124,7 @@ export default function QuickAddReminder({ userId, onCreated }: { userId: string
       <TextInput
         style={styles.textInput}
         placeholder={'Ingat apa nih? cth: "Bayar listrik tanggal 5 jam 8 pagi"'}
+        placeholderTextColor={theme.color.textMuted}
         value={text}
         onChangeText={applyParse}
         multiline
@@ -127,11 +132,18 @@ export default function QuickAddReminder({ userId, onCreated }: { userId: string
 
       {text.trim().length > 0 && (
         <View style={styles.details}>
-          <TextInput style={styles.titleInput} value={title} onChangeText={setTitle} placeholder="Judul" />
+          <TextInput
+            style={styles.titleInput}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Judul"
+            placeholderTextColor={theme.color.textMuted}
+          />
 
           {relativeNote && <Text style={styles.relativeNote}>{relativeNote}</Text>}
 
           <Pressable style={styles.dateButton} onPress={openPicker}>
+            <CalendarClock size={iconSize.sm} color={theme.color.textMuted} />
             <Text style={styles.dateButtonText}>
               {dueAt ? formatReminderDueAt(dueAt.toISOString()) : 'Pilih tanggal & waktu'}
             </Text>
@@ -184,97 +196,115 @@ export default function QuickAddReminder({ userId, onCreated }: { userId: string
       {error && <Text style={styles.error}>{error}</Text>}
 
       <Pressable
-        style={[styles.submitButton, (!text.trim() || saving) && styles.submitButtonDisabled]}
+        style={({ pressed }) => [styles.submitButton, pressed && styles.pressed, (!text.trim() || saving) && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={!text.trim() || saving}
       >
-        <Text style={styles.submitButtonText}>{saving ? 'Menyimpan…' : 'Simpan Reminder'}</Text>
+        {saving ? <ActivityIndicator color={theme.color.onPrimary} /> : <Text style={styles.submitButtonText}>Simpan Reminder</Text>}
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: 10,
-    marginBottom: 16,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 14,
-    minHeight: 44,
-  },
-  details: {
-    gap: 8,
-    backgroundColor: '#f7f7f7',
-    borderRadius: 10,
-    padding: 10,
-  },
-  titleInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 8,
-    fontSize: 14,
-    backgroundColor: '#fff',
-  },
-  relativeNote: {
-    fontSize: 12,
-    color: '#92400e',
-    backgroundColor: '#fef3c7',
-    padding: 8,
-    borderRadius: 8,
-  },
-  dateButton: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    backgroundColor: '#fff',
-  },
-  dateButtonText: {
-    fontSize: 13,
-  },
-  chipRow: {
-    flexDirection: 'row',
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 6,
-    backgroundColor: '#fff',
-  },
-  chipActive: {
-    backgroundColor: '#111',
-    borderColor: '#111',
-  },
-  chipText: {
-    fontSize: 12,
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-  error: {
-    color: '#b00020',
-    fontSize: 12,
-  },
-  submitButton: {
-    backgroundColor: '#111',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-});
+function makeStyles(theme: Theme) {
+  return StyleSheet.create({
+    container: {
+      gap: space.sm,
+      marginBottom: space.lg,
+    },
+    textInput: {
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.md,
+      padding: space.md,
+      fontSize: fontSize.base,
+      minHeight: 44,
+      color: theme.color.text,
+    },
+    details: {
+      gap: space.sm,
+      backgroundColor: theme.color.surface,
+      borderRadius: radius.md,
+      padding: space.sm,
+    },
+    titleInput: {
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.sm,
+      padding: space.sm,
+      fontSize: fontSize.base,
+      backgroundColor: theme.color.background,
+      color: theme.color.text,
+    },
+    relativeNote: {
+      fontSize: fontSize.xs,
+      color: theme.color.warningText,
+      backgroundColor: theme.color.warningBg,
+      padding: space.sm,
+      borderRadius: radius.sm,
+    },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.xs,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.sm,
+      padding: space.sm,
+      backgroundColor: theme.color.background,
+      minHeight: 44,
+    },
+    dateButtonText: {
+      fontSize: fontSize.sm,
+      color: theme.color.text,
+    },
+    chipRow: {
+      flexDirection: 'row',
+    },
+    chip: {
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.pill,
+      paddingHorizontal: space.md,
+      paddingVertical: space.xs + 2,
+      marginRight: space.xs,
+      backgroundColor: theme.color.background,
+      minHeight: 32,
+      justifyContent: 'center',
+    },
+    chipActive: {
+      backgroundColor: theme.color.primary,
+      borderColor: theme.color.primary,
+    },
+    chipText: {
+      fontSize: fontSize.xs,
+      color: theme.color.text,
+    },
+    chipTextActive: {
+      color: theme.color.onPrimary,
+    },
+    error: {
+      color: theme.color.destructive,
+      fontSize: fontSize.xs,
+    },
+    submitButton: {
+      backgroundColor: theme.color.primary,
+      borderRadius: radius.md,
+      paddingVertical: space.md,
+      alignItems: 'center',
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    submitButtonDisabled: {
+      opacity: 0.5,
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+    submitButtonText: {
+      color: theme.color.onPrimary,
+      fontWeight: '600',
+      fontSize: fontSize.base,
+    },
+  });
+}

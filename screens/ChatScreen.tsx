@@ -10,15 +10,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Send } from 'lucide-react-native';
 import { getAssistantHistory, sendAssistantMessage } from '../lib/assistant';
 import type { AssistantChatMessage, AssistantDraft, ChatMessageRef } from '../lib/types';
 import ChatBubble from '../components/ChatBubble';
+import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
 // Chat with "Babel" (the assistant) — calls the `assistant` Supabase Edge
 // Function directly (see D:\APP\ingatin\supabase\functions\assistant),
-// never the PWA's own deployed app. Scoped to reminder/checklist actions
-// only for v1 — no trip actions yet (see the roadmap plan).
+// never the PWA's own deployed app.
 export default function ChatScreen({ onNavigateToRef }: { onNavigateToRef: (ref: ChatMessageRef) => void }) {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const [messages, setMessages] = useState<AssistantChatMessage[]>([]);
   const [greeting, setGreeting] = useState<{ text: string; refs?: ChatMessageRef[] } | null>(null);
   const [draft, setDraft] = useState<AssistantDraft | null>(null);
@@ -69,7 +72,7 @@ export default function ChatScreen({ onNavigateToRef }: { onNavigateToRef: (ref:
       keyboardVerticalOffset={90}
     >
       {loading ? (
-        <ActivityIndicator style={styles.loading} />
+        <ActivityIndicator style={styles.loading} color={theme.color.primary} />
       ) : (
         <FlatList
           ref={listRef}
@@ -87,61 +90,73 @@ export default function ChatScreen({ onNavigateToRef }: { onNavigateToRef: (ref:
         <TextInput
           style={styles.input}
           placeholder="Ngobrol sama Babel…"
+          placeholderTextColor={theme.color.textMuted}
           value={input}
           onChangeText={setInput}
           onSubmitEditing={handleSend}
           editable={!sending}
           multiline
         />
-        <Pressable style={styles.sendButton} onPress={handleSend} disabled={!input.trim() || sending}>
-          {sending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.sendButtonText}>Kirim</Text>}
+        <Pressable
+          style={[styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled]}
+          onPress={handleSend}
+          disabled={!input.trim() || sending}
+          accessibilityLabel="Kirim pesan"
+        >
+          {sending ? <ActivityIndicator color={theme.color.onPrimary} size="small" /> : <Send size={iconSize.sm} color={theme.color.onPrimary} />}
         </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loading: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 16,
-  },
-  error: {
-    color: '#b00020',
-    fontSize: 12,
-    paddingHorizontal: 16,
-  },
-  composer: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: '#111',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-});
+function makeStyles(theme: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.color.background,
+    },
+    loading: {
+      flex: 1,
+    },
+    listContent: {
+      padding: space.lg,
+    },
+    error: {
+      color: theme.color.destructive,
+      fontSize: fontSize.xs,
+      paddingHorizontal: space.lg,
+    },
+    composer: {
+      flexDirection: 'row',
+      gap: space.sm,
+      padding: space.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.color.border,
+    },
+    input: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.md,
+      paddingHorizontal: space.md,
+      paddingVertical: space.sm,
+      fontSize: fontSize.base,
+      color: theme.color.text,
+      backgroundColor: theme.color.surface,
+      maxHeight: 100,
+      minHeight: 44,
+    },
+    sendButton: {
+      backgroundColor: theme.color.primary,
+      borderRadius: radius.md,
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sendButtonDisabled: {
+      opacity: 0.5,
+    },
+  });
+}

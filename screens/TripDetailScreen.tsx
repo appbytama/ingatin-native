@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { ArrowLeft, CalendarDays, CheckCircle2, Plane, Plus, UserPlus, X } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import {
   addExpense,
@@ -11,6 +12,7 @@ import {
   setExpenseShareSettled,
   type TripDetail,
 } from '../lib/trips';
+import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00Z').toLocaleDateString('id-ID', {
@@ -30,6 +32,8 @@ function rupiah(amount: number) {
 }
 
 export default function TripDetailScreen({ tripId, onBack }: { tripId: string; onBack: () => void }) {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const [detail, setDetail] = useState<TripDetail | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,8 +117,9 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
   if (loading || !detail) {
     return (
       <View style={styles.container}>
-        <Pressable onPress={onBack}>
-          <Text style={styles.back}>← Kembali</Text>
+        <Pressable onPress={onBack} style={styles.backRow} hitSlop={10}>
+          <ArrowLeft size={iconSize.md} color={theme.color.textMuted} />
+          <Text style={styles.back}>Kembali</Text>
         </Pressable>
         {error && <Text style={styles.error}>{error}</Text>}
       </View>
@@ -127,18 +132,23 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Pressable onPress={onBack}>
-        <Text style={styles.back}>← Kembali</Text>
+      <Pressable onPress={onBack} style={styles.backRow} hitSlop={10}>
+        <ArrowLeft size={iconSize.md} color={theme.color.textMuted} />
+        <Text style={styles.back}>Kembali</Text>
       </Pressable>
 
-      <Text style={styles.title}>🧳 {trip.title}</Text>
+      <View style={styles.titleRow}>
+        <Plane size={iconSize.lg} color={theme.color.primary} />
+        <Text style={styles.title}>{trip.title}</Text>
+      </View>
       {trip.destination && <Text style={styles.subtitle}>{trip.destination}</Text>}
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Anggota</Text>
-          <Pressable onPress={handleInvite}>
-            <Text style={styles.linkText}>+ Undang</Text>
+          <Pressable onPress={handleInvite} style={styles.linkRow} hitSlop={8}>
+            <UserPlus size={14} color={theme.color.primaryText} />
+            <Text style={styles.linkText}>Undang</Text>
           </Pressable>
         </View>
         <Text style={styles.memberList}>
@@ -156,8 +166,8 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
               {item.time_of_day ? `${item.time_of_day} — ` : ''}
               {item.title}
             </Text>
-            <Pressable onPress={() => deleteItineraryItem(item.id).then(load)} hitSlop={8}>
-              <Text style={styles.itemDelete}>✕</Text>
+            <Pressable onPress={() => deleteItineraryItem(item.id).then(load)} hitSlop={10} accessibilityLabel="Hapus kegiatan">
+              <X size={14} color={theme.color.textMuted} />
             </Pressable>
           </View>
         ))}
@@ -165,6 +175,7 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
         <View style={styles.addForm}>
           {Platform.OS === 'android' ? (
             <Pressable style={styles.dateButton} onPress={pickItineraryDay}>
+              <CalendarDays size={iconSize.sm} color={theme.color.textMuted} />
               <Text style={styles.dateButtonText}>{toDateString(itemDay)}</Text>
             </Pressable>
           ) : (
@@ -175,16 +186,24 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
               onChange={(_e, picked) => picked && setItemDay(picked)}
             />
           )}
-          <TextInput
-            style={styles.input}
-            placeholder="Kegiatan, cth: Check-in hotel"
-            value={itemTitle}
-            onChangeText={setItemTitle}
-            onSubmitEditing={handleAddItineraryItem}
-          />
-          <Pressable style={styles.addButton} onPress={handleAddItineraryItem} disabled={!itemTitle.trim()}>
-            <Text style={styles.addButtonText}>+</Text>
-          </Pressable>
+          <View style={styles.inlineAddRow}>
+            <TextInput
+              style={[styles.input, styles.inlineInput]}
+              placeholder="Kegiatan, cth: Check-in hotel"
+              placeholderTextColor={theme.color.textMuted}
+              value={itemTitle}
+              onChangeText={setItemTitle}
+              onSubmitEditing={handleAddItineraryItem}
+            />
+            <Pressable
+              style={[styles.addButton, !itemTitle.trim() && styles.addButtonDisabled]}
+              onPress={handleAddItineraryItem}
+              disabled={!itemTitle.trim()}
+              accessibilityLabel="Tambah kegiatan"
+            >
+              <Plus size={iconSize.sm} color={theme.color.onPrimary} />
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -206,14 +225,18 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
                   <Text style={styles.shareName}>{nameOf(share.user_id)}</Text>
                   {canSettle ? (
                     <Pressable
-                      onPress={() =>
-                        setExpenseShareSettled(expense.id, share.user_id, !share.settled_at).then(load)
-                      }
+                      style={styles.shareStatusRow}
+                      onPress={() => setExpenseShareSettled(expense.id, share.user_id, !share.settled_at).then(load)}
+                      hitSlop={6}
                     >
-                      <Text style={styles.shareStatus}>{share.settled_at ? '✅ Lunas' : 'Belum lunas'}</Text>
+                      {share.settled_at && <CheckCircle2 size={13} color={theme.color.primaryText} />}
+                      <Text style={styles.shareStatus}>{share.settled_at ? 'Lunas' : 'Belum lunas'}</Text>
                     </Pressable>
                   ) : (
-                    <Text style={styles.shareStatus}>{share.settled_at ? '✅ Lunas' : 'Belum lunas'}</Text>
+                    <View style={styles.shareStatusRow}>
+                      {share.settled_at && <CheckCircle2 size={13} color={theme.color.primaryText} />}
+                      <Text style={styles.shareStatus}>{share.settled_at ? 'Lunas' : 'Belum lunas'}</Text>
+                    </View>
                   )}
                 </View>
               ))}
@@ -225,24 +248,29 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
           <TextInput
             style={styles.input}
             placeholder="Keterangan, cth: Hotel malam 1"
+            placeholderTextColor={theme.color.textMuted}
             value={expenseDesc}
             onChangeText={setExpenseDesc}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Jumlah (Rp)"
-            keyboardType="numeric"
-            value={expenseAmount}
-            onChangeText={setExpenseAmount}
-            onSubmitEditing={handleAddExpense}
-          />
-          <Pressable
-            style={styles.addButton}
-            onPress={handleAddExpense}
-            disabled={!expenseDesc.trim() || !expenseAmount}
-          >
-            <Text style={styles.addButtonText}>+</Text>
-          </Pressable>
+          <View style={styles.inlineAddRow}>
+            <TextInput
+              style={[styles.input, styles.inlineInput]}
+              placeholder="Jumlah (Rp)"
+              placeholderTextColor={theme.color.textMuted}
+              keyboardType="numeric"
+              value={expenseAmount}
+              onChangeText={setExpenseAmount}
+              onSubmitEditing={handleAddExpense}
+            />
+            <Pressable
+              style={[styles.addButton, (!expenseDesc.trim() || !expenseAmount) && styles.addButtonDisabled]}
+              onPress={handleAddExpense}
+              disabled={!expenseDesc.trim() || !expenseAmount}
+              accessibilityLabel="Tambah pengeluaran"
+            >
+              <Plus size={iconSize.sm} color={theme.color.onPrimary} />
+            </Pressable>
+          </View>
         </View>
         <Text style={styles.hint}>Dibagi rata ke semua anggota trip, kamu sebagai pembayar.</Text>
       </View>
@@ -250,133 +278,179 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  back: {
-    color: '#666',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: '#777',
-    marginBottom: 8,
-  },
-  error: {
-    color: '#b00020',
-  },
-  section: {
-    marginTop: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  linkText: {
-    color: '#2563eb',
-    fontSize: 13,
-  },
-  memberList: {
-    fontSize: 13,
-    color: '#444',
-  },
-  itineraryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  itineraryDay: {
-    fontSize: 11,
-    color: '#888',
-    width: 64,
-  },
-  itineraryText: {
-    flex: 1,
-    fontSize: 13,
-  },
-  itemDelete: {
-    color: '#999',
-    paddingHorizontal: 4,
-  },
-  addForm: {
-    gap: 8,
-    marginTop: 10,
-  },
-  dateButton: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 8,
-  },
-  dateButtonText: {
-    fontSize: 13,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 13,
-  },
-  addButton: {
-    backgroundColor: '#111',
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  expenseCard: {
-    backgroundColor: '#f7f7f7',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
-  },
-  expenseTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  expenseSubtitle: {
-    fontSize: 11,
-    color: '#777',
-    marginBottom: 4,
-  },
-  shareRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 2,
-  },
-  shareName: {
-    fontSize: 12,
-  },
-  shareStatus: {
-    fontSize: 12,
-    color: '#2563eb',
-  },
-  hint: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 4,
-  },
-});
+function makeStyles(theme: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.color.background,
+    },
+    content: {
+      padding: space.lg,
+      paddingBottom: space.xxl + space.lg,
+    },
+    backRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginBottom: space.sm,
+      alignSelf: 'flex-start',
+    },
+    back: {
+      color: theme.color.textMuted,
+      fontSize: fontSize.sm,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.xs,
+    },
+    title: {
+      fontSize: fontSize.xl - 2,
+      fontWeight: '700',
+      color: theme.color.text,
+    },
+    subtitle: {
+      color: theme.color.textMuted,
+      marginBottom: space.sm,
+      fontSize: fontSize.sm,
+    },
+    error: {
+      color: theme.color.destructive,
+    },
+    section: {
+      marginTop: space.xl,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    sectionTitle: {
+      fontSize: fontSize.md,
+      fontWeight: '700',
+      marginBottom: space.sm,
+      color: theme.color.text,
+    },
+    linkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    linkText: {
+      color: theme.color.primaryText,
+      fontSize: fontSize.sm,
+      fontWeight: '600',
+    },
+    memberList: {
+      fontSize: fontSize.sm,
+      color: theme.color.textMuted,
+    },
+    itineraryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.sm,
+      paddingVertical: space.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.color.border,
+    },
+    itineraryDay: {
+      fontSize: fontSize.xs - 1,
+      color: theme.color.textMuted,
+      width: 64,
+    },
+    itineraryText: {
+      flex: 1,
+      fontSize: fontSize.sm,
+      color: theme.color.text,
+    },
+    addForm: {
+      gap: space.sm,
+      marginTop: space.sm + 2,
+    },
+    inlineAddRow: {
+      flexDirection: 'row',
+      gap: space.sm,
+    },
+    inlineInput: {
+      flex: 1,
+    },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.xs,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.sm,
+      padding: space.sm,
+      minHeight: 40,
+      alignSelf: 'flex-start',
+    },
+    dateButtonText: {
+      fontSize: fontSize.sm,
+      color: theme.color.text,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: radius.sm,
+      paddingHorizontal: space.sm + 2,
+      paddingVertical: space.sm,
+      fontSize: fontSize.sm,
+      color: theme.color.text,
+      backgroundColor: theme.color.surface,
+      minHeight: 40,
+    },
+    addButton: {
+      backgroundColor: theme.color.primary,
+      borderRadius: radius.sm,
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addButtonDisabled: {
+      opacity: 0.5,
+    },
+    expenseCard: {
+      backgroundColor: theme.color.surface,
+      borderRadius: radius.md,
+      padding: space.sm + 2,
+      marginBottom: space.sm,
+    },
+    expenseTitle: {
+      fontSize: fontSize.sm,
+      fontWeight: '700',
+      color: theme.color.text,
+    },
+    expenseSubtitle: {
+      fontSize: fontSize.xs - 1,
+      color: theme.color.textMuted,
+      marginBottom: space.xs,
+    },
+    shareRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 2,
+    },
+    shareName: {
+      fontSize: fontSize.xs,
+      color: theme.color.text,
+    },
+    shareStatusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    shareStatus: {
+      fontSize: fontSize.xs,
+      color: theme.color.primaryText,
+      fontWeight: '600',
+    },
+    hint: {
+      fontSize: fontSize.xs - 1,
+      color: theme.color.textMuted,
+      marginTop: space.xs,
+    },
+  });
+}
