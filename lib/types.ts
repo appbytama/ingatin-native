@@ -66,6 +66,63 @@ export type Checklist = {
   checklist_items: ChecklistItem[];
 };
 
+export type TripStatus = "active" | "archived";
+export type TripMemberRole = "organizer" | "member";
+
+export type Trip = {
+  id: string;
+  owner_id: string;
+  title: string;
+  destination: string | null;
+  cover_photo_url: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  allow_member_invites: boolean;
+  allow_member_checklists: boolean;
+  status: TripStatus;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+export type TripMember = {
+  trip_id: string;
+  user_id: string;
+  role: TripMemberRole;
+  invited_by: string | null;
+  joined_at: string;
+};
+
+export type TripItineraryItem = {
+  id: string;
+  trip_id: string;
+  day_date: string; // yyyy-mm-dd
+  time_of_day: string | null; // HH:MM
+  title: string;
+  created_by: string | null;
+  sort_order: number;
+  created_at: string;
+  deleted_at: string | null;
+};
+
+export type TripExpense = {
+  id: string;
+  trip_id: string;
+  payer_id: string | null;
+  description: string;
+  amount_total: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  trip_expense_shares: TripExpenseShare[];
+};
+
+export type TripExpenseShare = {
+  expense_id: string;
+  user_id: string;
+  settled_at: string | null;
+};
+
 export type Reminder = {
   id: string;
   user_id: string;

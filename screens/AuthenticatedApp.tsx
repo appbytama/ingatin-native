@@ -4,8 +4,9 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import HomeScreen from './HomeScreen';
 import ChecklistsScreen from './ChecklistsScreen';
+import TripsScreen from './TripsScreen';
 
-type Tab = 'reminders' | 'checklists';
+type Tab = 'reminders' | 'checklists' | 'trips';
 
 // Plain state instead of a navigation library — with only two flat tabs
 // there's nothing yet that needs stack navigation/deep-linking. Revisit once
@@ -26,7 +27,9 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
       </View>
 
       <View style={styles.content}>
-        {tab === 'reminders' ? <HomeScreen userId={session.user.id} /> : <ChecklistsScreen />}
+        {tab === 'reminders' && <HomeScreen userId={session.user.id} />}
+        {tab === 'checklists' && <ChecklistsScreen />}
+        {tab === 'trips' && <TripsScreen />}
       </View>
 
       <View style={styles.tabBar}>
@@ -35,6 +38,9 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
         </Pressable>
         <Pressable style={styles.tabButton} onPress={() => setTab('checklists')}>
           <Text style={[styles.tabLabel, tab === 'checklists' && styles.tabLabelActive]}>📋 Checklist</Text>
+        </Pressable>
+        <Pressable style={styles.tabButton} onPress={() => setTab('trips')}>
+          <Text style={[styles.tabLabel, tab === 'trips' && styles.tabLabelActive]}>🧳 Trip</Text>
         </Pressable>
       </View>
     </View>
