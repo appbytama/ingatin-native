@@ -1,45 +1,42 @@
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
+import AuthScreen from './screens/AuthScreen';
+import HomeScreen from './screens/HomeScreen';
 
-// Fase 0-1 sanity check only: confirms the app can reach the same Supabase
-// project the PWA uses (env vars correct, network path works) before any
-// real auth/UI gets built. An unauthenticated client hitting an RLS-scoped
-// table is expected to succeed with an empty array, not an error — that's
-// what "connected" looks like here.
+// Supabase's token refresh runs on a timer that keeps firing in the
+// background unless paused — this stops it while the app isn't foregrounded.
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') {
+    supabase.auth.startAutoRefresh();
+  } else {
+    supabase.auth.stopAutoRefresh();
+  }
+});
+
 export default function App() {
-  const [status, setStatus] = useState('Menghubungkan ke Supabase...');
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from('reminders')
-      .select('id')
-      .limit(1)
-      .then(({ error }) => {
-        setStatus(error ? `Gagal: ${error.message}` : 'Konek ke Supabase OK ✅');
-      });
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+
+    return () => subscription.subscription.unsubscribe();
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Ingatin Native</Text>
-      <Text>{status}</Text>
+    <>
+      {!loading && (session ? <HomeScreen session={session} /> : <AuthScreen />)}
       <StatusBar style="auto" />
-    </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-});

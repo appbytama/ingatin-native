@@ -38,3 +38,32 @@ Workaround — run ngrok manually instead of through Expo's wrapper:
 Once on the same network as your phone (e.g. testing from home), none of
 this is needed — plain `npx expo start` and scanning the LAN QR code
 works normally.
+
+## Google OAuth setup (one-time, in the dashboards)
+
+Email/password auth needs no extra config. Google sign-in
+([lib/googleAuth.ts](lib/googleAuth.ts)) does:
+
+1. Google Cloud Console — create an OAuth 2.0 Client ID (Web application
+   type, since Supabase's server does the token exchange, not the app
+   directly). Add authorized redirect URI:
+   `https://alwroeyefndwwykyxhsh.supabase.co/auth/v1/callback`
+2. Supabase Dashboard → Authentication → Providers → Google — paste that
+   Client ID/Secret, enable the provider.
+3. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs
+   — add the app's own callback so Supabase allows redirecting back into
+   it after Google. `AuthSession.makeRedirectUri()` builds this
+   differently per environment:
+   - Dev client / standalone build: `ingatin://google-auth` (the `scheme`
+     in [app.json](app.json)) — stable, add it once.
+   - **Expo Go**: `exp://<current-IP-or-tunnel-host>:8081/--/google-auth`
+     — changes every time the LAN IP or ngrok subdomain changes, since
+     Expo Go itself owns the redirect host, not the app's scheme. Add a
+     wildcard entry (`exp://**`) to Supabase's redirect allow-list for
+     dev, or expect to update this URL each session. This is a dev-only
+     workaround — do not ship a build relying on `exp://**`.
+
+Same random-subdomain caveat as the tunnel section above applies here: if
+testing over ngrok, the Google Cloud redirect URI stays the Supabase one
+(step 1) and doesn't change, but Supabase's own allow-list needs the
+`exp://**` wildcard (or the exact tunnel host) covered by step 3.
