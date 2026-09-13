@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Supabase CLI local cache (a `supabase` command run from this directory
+# creates this even though this project has no supabase/ content of its
+# own — the actual schema/migrations/edge functions live in the PWA repo)
+supabase/.temp/

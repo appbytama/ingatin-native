@@ -5,8 +5,10 @@ import { supabase } from '../lib/supabase';
 import HomeScreen from './HomeScreen';
 import ChecklistsScreen from './ChecklistsScreen';
 import TripsScreen from './TripsScreen';
+import ChatScreen from './ChatScreen';
+import type { ChatMessageRef } from '../lib/types';
 
-type Tab = 'reminders' | 'checklists' | 'trips';
+type Tab = 'reminders' | 'checklists' | 'trips' | 'chat';
 
 // Plain state instead of a navigation library — with only two flat tabs
 // there's nothing yet that needs stack navigation/deep-linking. Revisit once
@@ -30,6 +32,9 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
         {tab === 'reminders' && <HomeScreen userId={session.user.id} />}
         {tab === 'checklists' && <ChecklistsScreen />}
         {tab === 'trips' && <TripsScreen />}
+        {tab === 'chat' && (
+          <ChatScreen onNavigateToRef={(ref: ChatMessageRef) => setTab(ref.kind === 'reminder' ? 'reminders' : 'checklists')} />
+        )}
       </View>
 
       <View style={styles.tabBar}>
@@ -41,6 +46,9 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
         </Pressable>
         <Pressable style={styles.tabButton} onPress={() => setTab('trips')}>
           <Text style={[styles.tabLabel, tab === 'trips' && styles.tabLabelActive]}>🧳 Trip</Text>
+        </Pressable>
+        <Pressable style={styles.tabButton} onPress={() => setTab('chat')}>
+          <Text style={[styles.tabLabel, tab === 'chat' && styles.tabLabelActive]}>💬 Babel</Text>
         </Pressable>
       </View>
     </View>

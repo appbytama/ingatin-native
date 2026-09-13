@@ -123,6 +123,32 @@ export type TripExpenseShare = {
   settled_at: string | null;
 };
 
+// Assistant ("Babel") chat — talks to the `assistant` Supabase Edge
+// Function (D:\APP\ingatin\supabase\functions\assistant), not the PWA's
+// deployed app. Scoped to reminder/checklist only for v1 (no trip actions
+// yet, see the roadmap plan).
+export type ChatMessageRef = { id: string; kind: "reminder" | "checklist"; title: string };
+
+export type AssistantChatMessage = {
+  role: "user" | "assistant";
+  text: string;
+  refs?: ChatMessageRef[];
+  createdAt?: string;
+};
+
+export type AssistantDraft = {
+  kind: "reminder" | "checklist";
+  id: string;
+  title: string;
+};
+
+export type AssistantTurnResult = {
+  reply: string;
+  draft: AssistantDraft | null;
+  done: boolean;
+  refs?: ChatMessageRef[];
+};
+
 export type Reminder = {
   id: string;
   user_id: string;
