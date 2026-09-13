@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Plus, Ticket } from 'lucide-react-native';
+import { History, KeyRound, Plus } from 'lucide-react-native';
 import { createTrip, getTrips, joinTripByCode } from '../lib/trips';
 import type { Trip } from '../lib/types';
 import TripCard from '../components/TripCard';
 import TripDetailScreen from './TripDetailScreen';
 import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
+type Panel = null | 'create' | 'join';
+
+// Mirrors the PWA's "/trip" page (read off its live DOM): title + a
+// Baru/Gabung/Riwayat button row, dashed empty-state card. The PWA's "Baru"
+// button likely opens its own form/dialog (not inspected) — here it toggles
+// an inline field, reusing the create/join logic already built. "Riwayat"
+// (archived trips) has no screen yet, so it's a stub for now.
 export default function TripsScreen() {
   const theme = useTheme();
   const styles = makeStyles(theme);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [panel, setPanel] = useState<Panel>(null);
   const [newTitle, setNewTitle] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -20,9 +27,6 @@ export default function TripsScreen() {
   const load = useCallback(async () => {
     try {
       setTrips(await getTrips());
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat trip.');
     } finally {
       setLoading(false);
     }
@@ -38,6 +42,7 @@ export default function TripsScreen() {
     try {
       const id = await createTrip({ title });
       setNewTitle('');
+      setPanel(null);
       await load();
       setSelectedTripId(id);
     } catch (err) {
@@ -50,6 +55,7 @@ export default function TripsScreen() {
     try {
       const { tripId } = await joinTripByCode(joinCode);
       setJoinCode('');
+      setPanel(null);
       await load();
       setSelectedTripId(tripId);
     } catch (err) {
@@ -68,48 +74,68 @@ export default function TripsScreen() {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View>
-            <View style={styles.row}>
-              <TextInput
-                style={styles.input}
-                placeholder="Trip baru, cth: Liburan Bali"
-                placeholderTextColor={theme.color.textMuted}
-                value={newTitle}
-                onChangeText={setNewTitle}
-                onSubmitEditing={handleCreate}
-              />
+            <Text style={styles.pageTitle}>Ngetrip</Text>
+
+            <View style={styles.actionRow}>
               <Pressable
-                style={[styles.button, !newTitle.trim() && styles.buttonDisabled]}
-                onPress={handleCreate}
-                disabled={!newTitle.trim()}
-                accessibilityLabel="Buat trip"
+                style={[styles.actionButton, styles.actionPrimary]}
+                onPress={() => setPanel(panel === 'create' ? null : 'create')}
               >
-                <Plus size={iconSize.md} color={theme.color.onPrimary} />
+                <Plus size={14} color={theme.color.primarySoftText} />
+                <Text style={styles.actionPrimaryText}>Baru</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.actionButton, styles.actionSecondary]}
+                onPress={() => setPanel(panel === 'join' ? null : 'join')}
+              >
+                <KeyRound size={14} color={theme.color.textMuted} />
+                <Text style={styles.actionSecondaryText}>Gabung</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.actionButton, styles.actionSecondary]}
+                onPress={() => Alert.alert('Riwayat trip', 'Belum tersedia.')}
+              >
+                <History size={14} color={theme.color.textMuted} />
+                <Text style={styles.actionSecondaryText}>Riwayat</Text>
               </Pressable>
             </View>
 
-            <View style={styles.row}>
-              <TextInput
-                style={styles.input}
-                placeholder="Punya kode undangan?"
-                placeholderTextColor={theme.color.textMuted}
-                autoCapitalize="characters"
-                value={joinCode}
-                onChangeText={setJoinCode}
-                onSubmitEditing={handleJoin}
-              />
-              <Pressable
-                style={[styles.button, !joinCode.trim() && styles.buttonDisabled]}
-                onPress={handleJoin}
-                disabled={!joinCode.trim()}
-                accessibilityLabel="Gabung trip"
-              >
-                <Ticket size={iconSize.md} color={theme.color.onPrimary} />
-              </Pressable>
-            </View>
+            {panel === 'create' && (
+              <View style={styles.inlineRow}>
+                <TextInput
+                  style={styles.inlineInput}
+                  placeholder="Nama trip, cth: Liburan Bali"
+                  placeholderTextColor={theme.color.textMuted}
+                  value={newTitle}
+                  onChangeText={setNewTitle}
+                  onSubmitEditing={handleCreate}
+                  autoFocus
+                />
+                <Pressable style={[styles.inlineButton, !newTitle.trim() && styles.inlineButtonDisabled]} onPress={handleCreate} disabled={!newTitle.trim()}>
+                  <Plus size={iconSize.sm} color={theme.color.onPrimary} />
+                </Pressable>
+              </View>
+            )}
+            {panel === 'join' && (
+              <View style={styles.inlineRow}>
+                <TextInput
+                  style={styles.inlineInput}
+                  placeholder="Kode undangan"
+                  placeholderTextColor={theme.color.textMuted}
+                  autoCapitalize="characters"
+                  value={joinCode}
+                  onChangeText={setJoinCode}
+                  onSubmitEditing={handleJoin}
+                  autoFocus
+                />
+                <Pressable style={[styles.inlineButton, !joinCode.trim() && styles.inlineButtonDisabled]} onPress={handleJoin} disabled={!joinCode.trim()}>
+                  <KeyRound size={iconSize.sm} color={theme.color.onPrimary} />
+                </Pressable>
+              </View>
+            )}
 
-            {error && <Text style={styles.error}>{error}</Text>}
-            {!loading && trips.length === 0 && !error && (
-              <Text style={styles.empty}>Belum ada trip. Buat atau gabung di atas.</Text>
+            {!loading && trips.length === 0 && (
+              <Text style={styles.emptyCard}>Belum ada trip. Bikin satu buat mulai rencanain bareng temen-temen.</Text>
             )}
           </View>
         }
@@ -130,44 +156,80 @@ function makeStyles(theme: Theme) {
     listContent: {
       padding: space.lg,
     },
-    row: {
+    pageTitle: {
+      fontSize: fontSize.lg,
+      fontWeight: '600',
+      color: theme.color.text,
+      marginBottom: space.md,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      gap: space.xs + 2,
+      marginBottom: space.md,
+    },
+    actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderRadius: radius.button,
+      paddingHorizontal: space.sm + 2,
+      paddingVertical: space.sm - 1,
+      minHeight: 36,
+    },
+    actionPrimary: {
+      backgroundColor: theme.color.primarySoftBg,
+    },
+    actionPrimaryText: {
+      color: theme.color.primarySoftText,
+      fontSize: fontSize.xs,
+      fontWeight: '500',
+    },
+    actionSecondary: {
+      backgroundColor: theme.color.surfaceMuted,
+    },
+    actionSecondaryText: {
+      color: theme.color.textMuted,
+      fontSize: fontSize.xs,
+      fontWeight: '500',
+    },
+    inlineRow: {
       flexDirection: 'row',
       gap: space.sm,
-      marginBottom: space.sm + 2,
+      marginBottom: space.md,
     },
-    input: {
+    inlineInput: {
       flex: 1,
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: radius.md,
+      borderRadius: radius.button,
       paddingHorizontal: space.md,
-      paddingVertical: space.md,
-      fontSize: fontSize.base,
+      paddingVertical: space.sm + 2,
+      fontSize: fontSize.sm,
       color: theme.color.text,
       backgroundColor: theme.color.surface,
       minHeight: 44,
     },
-    button: {
-      backgroundColor: theme.color.primary,
-      borderRadius: radius.md,
+    inlineButton: {
       width: 44,
       height: 44,
+      borderRadius: radius.button,
+      backgroundColor: theme.color.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    buttonDisabled: {
+    inlineButtonDisabled: {
       opacity: 0.5,
     },
-    error: {
-      color: theme.color.destructive,
-      marginBottom: space.sm,
-      fontSize: fontSize.sm,
-    },
-    empty: {
-      color: theme.color.textMuted,
+    emptyCard: {
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: theme.color.border,
+      borderRadius: radius.card,
+      paddingHorizontal: space.md,
+      paddingVertical: space.lg,
       textAlign: 'center',
-      marginTop: space.xxl,
       fontSize: fontSize.sm,
+      color: theme.color.textMuted,
     },
   });
 }

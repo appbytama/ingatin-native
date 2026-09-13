@@ -133,12 +133,12 @@ function makeStyles(theme: Theme) {
       padding: space.xxl,
     },
     title: {
-      fontSize: fontSize.xl + 4,
+      fontSize: fontSize.lg + 4,
       fontWeight: '700',
       color: theme.color.text,
     },
     tagline: {
-      fontSize: fontSize.sm,
+      fontSize: fontSize.xs,
       color: theme.color.textMuted,
       marginTop: 4,
       marginBottom: space.xxl,
@@ -151,10 +151,10 @@ function makeStyles(theme: Theme) {
       width: '100%',
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: radius.md,
+      borderRadius: radius.button,
       paddingHorizontal: space.md,
       paddingVertical: space.md,
-      fontSize: fontSize.base,
+      fontSize: fontSize.sm,
       color: theme.color.text,
       backgroundColor: theme.color.surface,
       minHeight: 44,
@@ -162,7 +162,7 @@ function makeStyles(theme: Theme) {
     primaryButton: {
       width: '100%',
       backgroundColor: theme.color.primary,
-      borderRadius: radius.md,
+      borderRadius: radius.button,
       paddingVertical: space.md,
       alignItems: 'center',
       minHeight: 44,
@@ -177,13 +177,13 @@ function makeStyles(theme: Theme) {
     primaryButtonText: {
       color: theme.color.onPrimary,
       fontWeight: '600',
-      fontSize: fontSize.base,
+      fontSize: fontSize.sm,
     },
     googleButton: {
       width: '100%',
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: radius.md,
+      borderRadius: radius.button,
       paddingVertical: space.md,
       alignItems: 'center',
       minHeight: 44,
@@ -192,7 +192,7 @@ function makeStyles(theme: Theme) {
     googleButtonText: {
       fontWeight: '600',
       color: theme.color.text,
-      fontSize: fontSize.base,
+      fontSize: fontSize.sm,
     },
     message: {
       color: theme.color.destructive,

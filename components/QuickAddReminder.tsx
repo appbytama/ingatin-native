@@ -215,24 +215,24 @@ function makeStyles(theme: Theme) {
     textInput: {
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: radius.md,
+      borderRadius: radius.button,
       padding: space.md,
-      fontSize: fontSize.base,
+      fontSize: fontSize.sm,
       minHeight: 44,
       color: theme.color.text,
     },
     details: {
       gap: space.sm,
       backgroundColor: theme.color.surface,
-      borderRadius: radius.md,
+      borderRadius: radius.button,
       padding: space.sm,
     },
     titleInput: {
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: radius.sm,
+      borderRadius: radius.button,
       padding: space.sm,
-      fontSize: fontSize.base,
+      fontSize: fontSize.sm,
       backgroundColor: theme.color.background,
       color: theme.color.text,
     },
@@ -241,7 +241,7 @@ function makeStyles(theme: Theme) {
       color: theme.color.warningText,
       backgroundColor: theme.color.warningBg,
       padding: space.sm,
-      borderRadius: radius.sm,
+      borderRadius: radius.button,
     },
     dateButton: {
       flexDirection: 'row',
@@ -249,7 +249,7 @@ function makeStyles(theme: Theme) {
       gap: space.xs,
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: radius.sm,
+      borderRadius: radius.button,
       padding: space.sm,
       backgroundColor: theme.color.background,
       minHeight: 44,
@@ -289,7 +289,7 @@ function makeStyles(theme: Theme) {
     },
     submitButton: {
       backgroundColor: theme.color.primary,
-      borderRadius: radius.md,
+      borderRadius: radius.button,
       paddingVertical: space.md,
       alignItems: 'center',
       minHeight: 44,
@@ -304,7 +304,7 @@ function makeStyles(theme: Theme) {
     submitButtonText: {
       color: theme.color.onPrimary,
       fontWeight: '600',
-      fontSize: fontSize.base,
+      fontSize: fontSize.sm,
     },
   });
 }

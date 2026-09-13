@@ -147,7 +147,7 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Anggota</Text>
           <Pressable onPress={handleInvite} style={styles.linkRow} hitSlop={8}>
-            <UserPlus size={14} color={theme.color.primaryText} />
+            <UserPlus size={14} color={theme.color.primarySoftTextStrong} />
             <Text style={styles.linkText}>Undang</Text>
           </Pressable>
         </View>
@@ -229,12 +229,12 @@ export default function TripDetailScreen({ tripId, onBack }: { tripId: string; o
                       onPress={() => setExpenseShareSettled(expense.id, share.user_id, !share.settled_at).then(load)}
                       hitSlop={6}
                     >
-                      {share.settled_at && <CheckCircle2 size={13} color={theme.color.primaryText} />}
+                      {share.settled_at && <CheckCircle2 size={13} color={theme.color.primarySoftTextStrong} />}
                       <Text style={styles.shareStatus}>{share.settled_at ? 'Lunas' : 'Belum lunas'}</Text>
                     </Pressable>
                   ) : (
                     <View style={styles.shareStatusRow}>
-                      {share.settled_at && <CheckCircle2 size={13} color={theme.color.primaryText} />}
+                      {share.settled_at && <CheckCircle2 size={13} color={theme.color.primarySoftTextStrong} />}
                       <Text style={styles.shareStatus}>{share.settled_at ? 'Lunas' : 'Belum lunas'}</Text>
                     </View>
                   )}
@@ -305,7 +305,7 @@ function makeStyles(theme: Theme) {
       gap: space.xs,
     },
     title: {
-      fontSize: fontSize.xl - 2,
+      fontSize: fontSize.lg,
       fontWeight: '700',
       color: theme.color.text,
     },
@@ -326,7 +326,7 @@ function makeStyles(theme: Theme) {
       alignItems: 'center',
     },
     sectionTitle: {
-      fontSize: fontSize.md,
+      fontSize: fontSize.sm,
       fontWeight: '700',
       marginBottom: space.sm,
       color: theme.color.text,
@@ -337,7 +337,7 @@ function makeStyles(theme: Theme) {
       gap: 4,
     },
     linkText: {
-      color: theme.color.primaryText,
+      color: theme.color.primarySoftTextStrong,
       fontSize: fontSize.sm,
       fontWeight: '600',
     },
@@ -354,7 +354,7 @@ function makeStyles(theme: Theme) {
       borderBottomColor: theme.color.border,
     },
     itineraryDay: {
-      fontSize: fontSize.xs - 1,
+      fontSize: fontSize.tiny,
       color: theme.color.textMuted,
       width: 64,
     },
@@ -380,7 +380,7 @@ function makeStyles(theme: Theme) {
       gap: space.xs,
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: radius.sm,
+      borderRadius: radius.button,
       padding: space.sm,
       minHeight: 40,
       alignSelf: 'flex-start',
@@ -392,7 +392,7 @@ function makeStyles(theme: Theme) {
     input: {
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: radius.sm,
+      borderRadius: radius.button,
       paddingHorizontal: space.sm + 2,
       paddingVertical: space.sm,
       fontSize: fontSize.sm,
@@ -402,7 +402,7 @@ function makeStyles(theme: Theme) {
     },
     addButton: {
       backgroundColor: theme.color.primary,
-      borderRadius: radius.sm,
+      borderRadius: radius.button,
       width: 40,
       height: 40,
       alignItems: 'center',
@@ -413,7 +413,7 @@ function makeStyles(theme: Theme) {
     },
     expenseCard: {
       backgroundColor: theme.color.surface,
-      borderRadius: radius.md,
+      borderRadius: radius.card,
       padding: space.sm + 2,
       marginBottom: space.sm,
     },
@@ -423,7 +423,7 @@ function makeStyles(theme: Theme) {
       color: theme.color.text,
     },
     expenseSubtitle: {
-      fontSize: fontSize.xs - 1,
+      fontSize: fontSize.tiny,
       color: theme.color.textMuted,
       marginBottom: space.xs,
     },
@@ -444,11 +444,11 @@ function makeStyles(theme: Theme) {
     },
     shareStatus: {
       fontSize: fontSize.xs,
-      color: theme.color.primaryText,
+      color: theme.color.primarySoftTextStrong,
       fontWeight: '600',
     },
     hint: {
-      fontSize: fontSize.xs - 1,
+      fontSize: fontSize.tiny,
       color: theme.color.textMuted,
       marginTop: space.xs,
     },

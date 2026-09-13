@@ -1,10 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Bell, ClipboardList, Plane } from 'lucide-react-native';
 import type { AssistantChatMessage, ChatMessageRef } from '../lib/types';
-import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
+import { useTheme, assistantBubbleGradient, space, radius, fontSize, type Theme } from '../lib/theme';
 
 const REF_ICON = { reminder: Bell, checklist: ClipboardList, trip: Plane } as const;
 
+// Mirrors the PWA's chat bubbles exactly (read off its live DOM): rounded-2xl
+// with one corner pinched to rounded-md (the "tail"), user = solid indigo-600,
+// assistant = a diagonal indigo->violet gradient + small bell-avatar. The ref
+// chip's own classes weren't directly captured (never inspected one in
+// isolation) — styled here as the same soft-indigo pill used elsewhere
+// (time badge / "Besok" badge / avatar), not a fresh guess.
 export default function ChatBubble({
   message,
   onRefPress,
@@ -18,16 +25,33 @@ export default function ChatBubble({
 
   return (
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
-        <Text style={isUser ? styles.textUser : styles.textAssistant}>{message.text}</Text>
-      </View>
+      {!isUser && (
+        <View style={styles.avatar}>
+          <Bell size={13} color={theme.color.primary} />
+        </View>
+      )}
+      {isUser ? (
+        <View style={[styles.bubble, styles.bubbleUser]}>
+          <Text style={styles.textUser}>{message.text}</Text>
+        </View>
+      ) : (
+        <LinearGradient
+          colors={theme.scheme === 'dark' ? assistantBubbleGradient.dark : assistantBubbleGradient.light}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.bubble, styles.bubbleAssistant]}
+        >
+          <Text style={styles.textAssistant}>{message.text}</Text>
+        </LinearGradient>
+      )}
+
       {message.refs && message.refs.length > 0 && (
         <View style={styles.refRow}>
           {message.refs.map((ref) => {
             const Icon = REF_ICON[ref.kind];
             return (
               <Pressable key={ref.id} style={styles.refChip} onPress={() => onRefPress(ref)} hitSlop={6}>
-                <Icon size={iconSize.sm - 3} color={theme.color.primaryText} />
+                <Icon size={12} color={theme.color.primarySoftTextStrong} />
                 <Text style={styles.refChipText}>{ref.title}</Text>
               </Pressable>
             );
@@ -49,25 +73,40 @@ function makeStyles(theme: Theme) {
     },
     rowAssistant: {
       alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 6,
+      maxWidth: '100%',
+    },
+    avatar: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: theme.color.primarySoftBgMid,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     bubble: {
-      borderRadius: radius.lg,
-      paddingHorizontal: space.md,
+      borderRadius: radius.sheet,
+      paddingHorizontal: 14,
       paddingVertical: space.sm,
+      maxWidth: '100%',
+      flexShrink: 1,
     },
     bubbleUser: {
       backgroundColor: theme.color.primary,
+      borderBottomRightRadius: radius.badge,
     },
     bubbleAssistant: {
-      backgroundColor: theme.color.surfaceAlt,
+      borderBottomLeftRadius: radius.badge,
     },
     textUser: {
       color: theme.color.onPrimary,
-      fontSize: fontSize.base,
+      fontSize: fontSize.sm,
     },
     textAssistant: {
-      color: theme.color.text,
-      fontSize: fontSize.base,
+      color: theme.color.primarySoftTextStrong,
+      fontSize: fontSize.sm,
     },
     refRow: {
       flexDirection: 'row',
@@ -80,15 +119,15 @@ function makeStyles(theme: Theme) {
       alignItems: 'center',
       gap: 4,
       borderWidth: 1,
-      borderColor: theme.color.border,
-      backgroundColor: theme.color.surface,
+      borderColor: theme.color.primarySoftBgMid,
+      backgroundColor: theme.color.primarySoftBg,
       borderRadius: radius.pill,
       paddingHorizontal: space.sm,
       paddingVertical: 4,
     },
     refChipText: {
       fontSize: fontSize.xs,
-      color: theme.color.primaryText,
+      color: theme.color.primarySoftTextStrong,
       fontWeight: '600',
     },
   });
