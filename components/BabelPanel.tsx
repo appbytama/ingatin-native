@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { ArrowLeft, Bell, MoreHorizontal, Pencil, Send, X } from 'lucide-react-native';
 import { getAssistantHistory, sendAssistantMessage } from '../lib/assistant';
 import { playSound } from '../lib/sound';
@@ -79,7 +91,10 @@ export default function BabelPanel({
   const displayMessages = greeting ? [...messages, { role: 'assistant' as const, text: greeting.text, refs: greeting.refs }] : messages;
 
   return (
-    <View style={styles.panel}>
+    <KeyboardAvoidingView
+      style={styles.panel}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           {assistantAvatarUrl ? (
@@ -157,7 +172,7 @@ export default function BabelPanel({
           </View>
         </>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
