@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, Bell, MoreHorizontal, Pencil, Send, X } from 'lucide-react-native';
 import { getAssistantHistory, sendAssistantMessage } from '../lib/assistant';
+import { playSound } from '../lib/sound';
 import type { AssistantChatMessage, AssistantDraft, ChatMessageRef } from '../lib/types';
 import ChatBubble from './ChatBubble';
 import QuickAddReminder from './QuickAddReminder';
@@ -20,10 +21,12 @@ type SubMode = 'chat' | 'manual';
 // this opens as a plain sheet.
 export default function BabelPanel({
   userId,
+  assistantAvatarUrl,
   onClose,
   onNavigateToRef,
 }: {
   userId: string;
+  assistantAvatarUrl?: string | null;
   onClose: () => void;
   onNavigateToRef: (ref: ChatMessageRef) => void;
 }) {
@@ -59,11 +62,13 @@ export default function BabelPanel({
     setGreeting(null);
     setSending(true);
     setError(null);
+    playSound('send');
 
     try {
       const result = await sendAssistantMessage(nextMessages, draft);
       setMessages((prev) => [...prev, { role: 'assistant', text: result.reply, refs: result.refs }]);
       setDraft(result.draft);
+      playSound('receive');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menghubungi Babel.');
     } finally {
@@ -77,7 +82,11 @@ export default function BabelPanel({
     <View style={styles.panel}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Bell size={18} color={theme.color.primary} />
+          {assistantAvatarUrl ? (
+            <Image source={{ uri: assistantAvatarUrl }} style={styles.headerAvatarImage} />
+          ) : (
+            <Bell size={18} color={theme.color.primary} />
+          )}
           <Text style={styles.headerTitle}>Ingatin</Text>
         </View>
         <View style={styles.headerRight}>
@@ -107,7 +116,9 @@ export default function BabelPanel({
               ref={listRef}
               data={displayMessages}
               keyExtractor={(_, i) => String(i)}
-              renderItem={({ item }) => <ChatBubble message={item} onRefPress={onNavigateToRef} />}
+              renderItem={({ item }) => (
+                <ChatBubble message={item} assistantAvatarUrl={assistantAvatarUrl} onRefPress={onNavigateToRef} />
+              )}
               contentContainerStyle={styles.listContent}
               onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
             />
@@ -172,6 +183,11 @@ function makeStyles(theme: Theme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.xs + 2,
+    },
+    headerAvatarImage: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
     },
     headerTitle: {
       fontSize: fontSize.sm,

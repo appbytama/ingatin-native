@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, ListChecks, Plane, Settings, Share2 } from 'lucide-react-native';
 import type { Session } from '@supabase/supabase-js';
@@ -10,6 +10,7 @@ import SettingsScreen from './SettingsScreen';
 import BabelPanel from '../components/BabelPanel';
 import BabelFab from '../components/BabelFab';
 import type { ChatMessageRef } from '../lib/types';
+import { playSound } from '../lib/sound';
 import { useTheme, space, fontSize, type Theme } from '../lib/theme';
 
 type Tab = 'semua' | 'home' | 'trip';
@@ -37,10 +38,22 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
 
   const nickname = (session.user.user_metadata?.nickname as string | undefined) || session.user.email?.split('@')[0] || '?';
   const initial = nickname.charAt(0).toUpperCase();
+  const profileAvatarUrl = (session.user.user_metadata?.avatar_url as string | undefined) || null;
+  const assistantAvatarUrl = (session.user.user_metadata?.assistant_avatar_url as string | undefined) || null;
 
   function handleNavigateToRef(ref: ChatMessageRef) {
     setBabelOpen(false);
     setTab(ref.kind === 'trip' ? 'trip' : 'semua');
+  }
+
+  function openBabel() {
+    playSound('open');
+    setBabelOpen(true);
+  }
+
+  function closeBabel() {
+    playSound('close');
+    setBabelOpen(false);
   }
 
   return (
@@ -52,7 +65,11 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
         </Pressable>
         <Pressable style={styles.avatarWrap} onPress={() => setShowSettings(true)} accessibilityLabel="Profil & Pengaturan">
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
+            {profileAvatarUrl ? (
+              <Image source={{ uri: profileAvatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{initial}</Text>
+            )}
           </View>
           <View style={styles.avatarBadge}>
             <Settings size={9} color={theme.color.textMuted} />
@@ -66,7 +83,7 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
         ) : (
           <>
             {tab === 'semua' && <SemuaScreen />}
-            {tab === 'home' && <HomeScreen userId={session.user.id} onOpenBabel={() => setBabelOpen(true)} />}
+            {tab === 'home' && <HomeScreen userId={session.user.id} onOpenBabel={openBabel} />}
             {tab === 'trip' && <TripsScreen />}
           </>
         )}
@@ -89,13 +106,18 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
         </Pressable>
       </View>
 
-      {!babelOpen && <BabelFab onPress={() => setBabelOpen(true)} bottomInset={insets.bottom} />}
+      {!babelOpen && <BabelFab onPress={openBabel} bottomInset={insets.bottom} avatarUrl={assistantAvatarUrl} />}
 
-      <Modal visible={babelOpen} transparent animationType="slide" onRequestClose={() => setBabelOpen(false)}>
+      <Modal visible={babelOpen} transparent animationType="slide" onRequestClose={closeBabel}>
         <View style={styles.modalRoot}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setBabelOpen(false)} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeBabel} />
           <View style={[styles.modalSheet, { paddingBottom: insets.bottom }]}>
-            <BabelPanel userId={session.user.id} onClose={() => setBabelOpen(false)} onNavigateToRef={handleNavigateToRef} />
+            <BabelPanel
+              userId={session.user.id}
+              assistantAvatarUrl={assistantAvatarUrl}
+              onClose={closeBabel}
+              onNavigateToRef={handleNavigateToRef}
+            />
           </View>
         </View>
       </Modal>
@@ -139,6 +161,11 @@ function makeStyles(theme: Theme) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.color.primarySoftBgMid,
+      overflow: 'hidden',
+    },
+    avatarImage: {
+      width: '100%',
+      height: '100%',
     },
     avatarText: {
       fontSize: fontSize.sm,

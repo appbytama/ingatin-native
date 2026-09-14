@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Bell, ClipboardList, Plane } from 'lucide-react-native';
 import type { AssistantChatMessage, ChatMessageRef } from '../lib/types';
@@ -14,9 +14,11 @@ const REF_ICON = { reminder: Bell, checklist: ClipboardList, trip: Plane } as co
 // (time badge / "Besok" badge / avatar), not a fresh guess.
 export default function ChatBubble({
   message,
+  assistantAvatarUrl,
   onRefPress,
 }: {
   message: AssistantChatMessage;
+  assistantAvatarUrl?: string | null;
   onRefPress: (ref: ChatMessageRef) => void;
 }) {
   const theme = useTheme();
@@ -27,7 +29,11 @@ export default function ChatBubble({
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
       {!isUser && (
         <View style={styles.avatar}>
-          <Bell size={13} color={theme.color.primary} />
+          {assistantAvatarUrl ? (
+            <Image source={{ uri: assistantAvatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <Bell size={13} color={theme.color.primary} />
+          )}
         </View>
       )}
       {isUser ? (
@@ -85,6 +91,11 @@ function makeStyles(theme: Theme) {
       backgroundColor: theme.color.primarySoftBgMid,
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    avatarImage: {
+      width: '100%',
+      height: '100%',
     },
     bubble: {
       borderRadius: radius.sheet,

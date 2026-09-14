@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
-import { Folder, LogOut, Plus, User, X } from 'lucide-react-native';
+import { Folder, LogOut, Plus, X } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { createCategory, deleteCategory, getCategories } from '../lib/categories';
+import { isSoundEnabled, playSound, setSoundEnabled } from '../lib/sound';
 import type { Category } from '../lib/types';
+import AvatarUpload from '../components/AvatarUpload';
 import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
 // Mirrors the PWA's "/pengaturan" page (read off its live DOM): Profil,
-// Personalisasi (assistant nickname), Kategori, then "Keluar" — this is
-// where sign-out actually lives, not on the avatar tap that opens this
-// screen. Notifikasi/Efek Suara/Instalasi sections aren't ported: native
-// push isn't built yet (Fase 5), and neither is a sound-effects system —
-// showing those toggles with no effect would be worse than omitting them.
+// Personalisasi (assistant nickname + both avatars), Efek Suara, Kategori,
+// then "Keluar" — this is where sign-out actually lives, not on the avatar
+// tap that opens this screen. Notifikasi/Instalasi aren't ported: native
+// push isn't built yet (Fase 5), and there's no PWA-install concept on a
+// real native app — showing those would be worse than omitting them.
 export default function SettingsScreen({ session }: { session: Session }) {
   const theme = useTheme();
   const styles = makeStyles(theme);
   const [nickname, setNickname] = useState('');
   const [assistantName, setAssistantName] = useState('');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [assistantAvatarUrl, setAssistantAvatarUrl] = useState<string | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -26,8 +31,17 @@ export default function SettingsScreen({ session }: { session: Session }) {
     const meta = session.user.user_metadata ?? {};
     setNickname((meta.nickname as string) || session.user.email?.split('@')[0] || '');
     setAssistantName((meta.assistant_name as string) || 'Ingatin');
+    setProfileAvatarUrl((meta.avatar_url as string) || null);
+    setAssistantAvatarUrl((meta.assistant_avatar_url as string) || null);
     getCategories(session.user.id).then(setCategories).catch(() => {});
+    isSoundEnabled().then(setSoundOn);
   }, [session]);
+
+  async function handleToggleSound(value: boolean) {
+    setSoundOn(value);
+    await setSoundEnabled(value);
+    if (value) playSound('open');
+  }
 
   async function handleSavePersonalization() {
     setSaving(true);
@@ -78,20 +92,18 @@ export default function SettingsScreen({ session }: { session: Session }) {
       <Text style={styles.pageTitle}>Pengaturan</Text>
 
       <View style={styles.card}>
-        <View style={styles.profileRow}>
-          <View style={styles.avatar}>
-            <User size={22} color={theme.color.onPrimary} />
-          </View>
-          <View>
-            <Text style={styles.profileLabel}>Pengguna</Text>
-            <Text style={styles.profileEmail}>{session.user.email}</Text>
-          </View>
+        <AvatarUpload userId={session.user.id} currentUrl={profileAvatarUrl} kind="profile" onUploaded={setProfileAvatarUrl} />
+        <View style={styles.profileTextBlock}>
+          <Text style={styles.profileLabel}>{nickname || 'Pengguna'}</Text>
+          <Text style={styles.profileEmail}>{session.user.email}</Text>
         </View>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Personalisasi</Text>
-        <Text style={styles.cardHint}>Atur bagaimana asisten memanggil kamu dan kasih nama asistennya.</Text>
+        <Text style={styles.cardHint}>Atur bagaimana asisten memanggil kamu, kasih nama, dan foto buat asistennya.</Text>
+
+        <AvatarUpload userId={session.user.id} currentUrl={assistantAvatarUrl} kind="assistant" onUploaded={setAssistantAvatarUrl} />
 
         <Text style={styles.fieldLabel}>Nama panggilan kamu</Text>
         <TextInput
@@ -114,6 +126,18 @@ export default function SettingsScreen({ session }: { session: Session }) {
         <Pressable style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSavePersonalization} disabled={saving}>
           <Text style={styles.saveButtonText}>{saving ? 'Menyimpan…' : 'Simpan'}</Text>
         </Pressable>
+      </View>
+
+      <View style={[styles.card, styles.soundCard]}>
+        <View style={styles.soundTextBlock}>
+          <Text style={styles.cardTitle}>Efek Suara</Text>
+          <Text style={styles.cardHint}>Bunyi pendek buat pop up dan chat asisten. Otomatis ikut mode senyap HP kamu.</Text>
+        </View>
+        <Switch
+          value={soundOn}
+          onValueChange={handleToggleSound}
+          trackColor={{ false: theme.color.surfaceMuted, true: theme.color.primary }}
+        />
       </View>
 
       <View style={styles.card}>
@@ -184,18 +208,8 @@ function makeStyles(theme: Theme) {
       padding: space.md,
       gap: space.sm,
     },
-    profileRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.md,
-    },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: theme.color.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
+    profileTextBlock: {
+      marginTop: space.sm,
     },
     profileLabel: {
       fontSize: fontSize.sm,
@@ -245,6 +259,16 @@ function makeStyles(theme: Theme) {
       color: theme.color.onPrimary,
       fontWeight: '600',
       fontSize: fontSize.sm,
+    },
+    soundCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: space.md,
+    },
+    soundTextBlock: {
+      flex: 1,
+      gap: 2,
     },
     categoryWrap: {
       flexDirection: 'row',

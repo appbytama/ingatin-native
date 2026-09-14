@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Dimensions, PanResponder, StyleSheet, View } from 'react-native';
+import { Dimensions, Image, PanResponder, StyleSheet, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Bell } from 'lucide-react-native';
 import { useTheme } from '../lib/theme';
@@ -28,7 +28,15 @@ function clamp(value: number, min: number, max: number) {
 // inside them would always see that stale snapshot. `posRef` is the
 // mutable source of truth the callbacks actually read/write; `pos` state
 // only exists to trigger a re-render at the new coordinates.
-export default function BabelFab({ onPress, bottomInset }: { onPress: () => void; bottomInset: number }) {
+export default function BabelFab({
+  onPress,
+  bottomInset,
+  avatarUrl,
+}: {
+  onPress: () => void;
+  bottomInset: number;
+  avatarUrl?: string | null;
+}) {
   const theme = useTheme();
   const { width, height } = Dimensions.get('window');
   const maxX = width - BUTTON_SIZE - MARGIN;
@@ -92,7 +100,11 @@ export default function BabelFab({ onPress, bottomInset }: { onPress: () => void
       accessibilityRole="button"
       accessibilityLabel="Buka asisten Ingatin"
     >
-      <Bell size={24} color={theme.color.onPrimary} />
+      {avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+      ) : (
+        <Bell size={24} color={theme.color.onPrimary} />
+      )}
     </View>
   );
 }
@@ -105,10 +117,15 @@ const styles = StyleSheet.create({
     borderRadius: BUTTON_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 6,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
 });
