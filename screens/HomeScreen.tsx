@@ -1,32 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Bell, ListChecks } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
-import { getUpcomingReminders, setReminderStatus, snoozeReminder, deleteReminder } from '../lib/reminders';
+import { getUpcomingReminders, getMissedReminders, setReminderStatus } from '../lib/reminders';
 import { getActiveChecklists } from '../lib/checklists';
 import type { Reminder, Checklist } from '../lib/types';
 import ReminderTimeline from '../components/ReminderTimeline';
 import ChecklistCard from '../components/ChecklistCard';
+import MissedRemindersBanner, { type MissedReminderData } from '../components/MissedRemindersBanner';
+import MissedRemindersPopup from '../components/MissedRemindersPopup';
 import { useTheme, space, radius, fontSize, type Theme } from '../lib/theme';
 
-// Mirrors the PWA's Home page ("/", read off its live DOM): greeting, a
-// timeline of reminders due in the next 24h grouped by date, and a
-// checklist summary section. Unlike the PWA, this app has no separate
-// detail page yet, so snooze/delete stay as inline row actions instead of
-// opening a detail sheet.
+// Mirrors the PWA's Home page ("/", read off its live DOM): a missed-
+// reminders popup + banner, greeting, a timeline of reminders due in the
+// next 24h grouped by date, and a checklist summary section. The PWA also
+// has a "Trip Kamu" section listing active trips here — deliberately not
+// ported yet since it needs the same trip-selection plumbing Phase 4.4's
+// Trip rebuild will introduce; tracked there, not duplicated ahead of it.
 export default function HomeScreen({ userId, onOpenBabel }: { userId: string; onOpenBabel: () => void }) {
   const theme = useTheme();
   const styles = makeStyles(theme);
   const [nickname, setNickname] = useState('kamu');
+  const [assistantName, setAssistantName] = useState('Ingatin');
+  const [assistantAvatarUrl, setAssistantAvatarUrl] = useState<string | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [missedReminders, setMissedReminders] = useState<MissedReminderData[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [r, c] = await Promise.all([getUpcomingReminders(), getActiveChecklists()]);
+      const [r, c, missed] = await Promise.all([getUpcomingReminders(), getActiveChecklists(), getMissedReminders()]);
       setReminders(r);
       setChecklists(c);
+      setMissedReminders(missed);
     } catch {
       // Home is a summary view — a failed refresh just leaves it stale,
       // reminders/checklist tabs are still reachable to see the real error.
@@ -40,43 +47,14 @@ export default function HomeScreen({ userId, onOpenBabel }: { userId: string; on
     supabase.auth.getUser().then(({ data }) => {
       const meta = data.user?.user_metadata ?? {};
       setNickname(meta.nickname || data.user?.email?.split('@')[0] || 'kamu');
+      setAssistantName(meta.assistant_name || 'Ingatin');
+      setAssistantAvatarUrl(meta.assistant_avatar_url || null);
     });
   }, [load]);
 
   async function handleToggleDone(reminder: Reminder) {
-    try {
-      await setReminderStatus(reminder.id, reminder.status === 'done' ? 'pending' : 'done');
-      load();
-    } catch (err) {
-      Alert.alert('Gagal', err instanceof Error ? err.message : 'Gagal mengubah status.');
-    }
-  }
-
-  async function handleSnooze(reminder: Reminder) {
-    try {
-      await snoozeReminder(reminder.id, new Date(Date.now() + 10 * 60_000).toISOString());
-      load();
-    } catch (err) {
-      Alert.alert('Gagal', err instanceof Error ? err.message : 'Gagal menunda reminder.');
-    }
-  }
-
-  function handleDelete(reminder: Reminder) {
-    Alert.alert('Hapus reminder?', reminder.title, [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteReminder(reminder.id);
-            load();
-          } catch (err) {
-            Alert.alert('Gagal', err instanceof Error ? err.message : 'Gagal menghapus reminder.');
-          }
-        },
-      },
-    ]);
+    await setReminderStatus(reminder.id, reminder.status === 'done' ? 'pending' : 'done');
+    load();
   }
 
   return (
@@ -85,10 +63,14 @@ export default function HomeScreen({ userId, onOpenBabel }: { userId: string; on
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.color.primary} />}
     >
+      <MissedRemindersPopup items={missedReminders} assistantName={assistantName} assistantAvatarUrl={assistantAvatarUrl} />
+
       <View style={styles.greetingBlock}>
         <Text style={styles.greeting}>Halo, {nickname} 👋</Text>
-        <Text style={styles.subtitle}>Aku Ingatin, asisten yang siap 24 jam buat kamu.</Text>
+        <Text style={styles.subtitle}>Aku {assistantName}, asisten yang siap 24 jam buat kamu.</Text>
       </View>
+
+      <MissedRemindersBanner items={missedReminders} onChanged={load} />
 
       <View>
         <View style={styles.sectionHeading}>
@@ -101,12 +83,7 @@ export default function HomeScreen({ userId, onOpenBabel }: { userId: string; on
             Belum ada reminder dalam 24 jam ke depan. Chat sama aku buat bikin satu 👋
           </Text>
         ) : (
-          <ReminderTimeline
-            reminders={reminders}
-            onToggleDone={handleToggleDone}
-            onSnooze={handleSnooze}
-            onDelete={handleDelete}
-          />
+          <ReminderTimeline reminders={reminders} onToggleDone={handleToggleDone} onChanged={load} />
         )}
       </View>
 

@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getMemberNicknames } from "./people";
 import type { Reminder, RecurrenceRule, RelativeTrigger, ReminderStatus } from "./types";
 
 const PAST_GRACE_MS = 60_000; // tolerate small submit/network lag, not a real backdate
@@ -172,5 +173,120 @@ export async function deleteReminder(id: string) {
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
 
+  if (error) throw error;
+}
+
+export interface ReminderDetail {
+  reminder: Reminder;
+  isOwner: boolean;
+  ownerNickname: string;
+  collaborators: { userId: string; nickname: string }[];
+}
+
+// Mirrors the PWA's GET /api/reminders/[id] (read off reminder-item-body.tsx):
+// the reminder row plus owner/collaborator nicknames. The PWA resolves
+// those via its admin client; native uses get_shared_member_nicknames
+// (lib/people.ts) instead, since a direct reminder share already makes the
+// caller and the reminder's other people "share something" under that RPC.
+export async function getReminderDetail(id: string): Promise<ReminderDetail> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Belum login.");
+
+  const { data: reminder, error } = await supabase
+    .from("reminders")
+    .select("*, categories(name, icon)")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+
+  const { data: collaboratorRows, error: collabError } = await supabase
+    .from("reminder_collaborators")
+    .select("user_id")
+    .eq("reminder_id", id);
+  if (collabError) throw collabError;
+
+  const nicknames = await getMemberNicknames([reminder.user_id, ...collaboratorRows.map((c) => c.user_id)]);
+
+  return {
+    reminder,
+    isOwner: reminder.user_id === user.id,
+    ownerNickname: nicknames[reminder.user_id] ?? "kamu",
+    collaborators: collaboratorRows.map((c) => ({ userId: c.user_id, nickname: nicknames[c.user_id] ?? c.user_id.slice(0, 8) })),
+  };
+}
+
+export async function createReminderInvite(reminderId: string): Promise<{ code: string; expiresAt: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Belum login.");
+
+  const { data, error } = await supabase
+    .from("reminder_invites")
+    .insert({ reminder_id: reminderId, created_by: user.id })
+    .select("code, expires_at")
+    .single();
+
+  if (error) throw error;
+  return { code: data.code as string, expiresAt: data.expires_at as string };
+}
+
+const JOIN_ERROR_MESSAGES: Record<string, string> = {
+  invite_expired: "Kode ini udah kedaluwarsa — minta kode baru ya.",
+  invite_exhausted: "Kode ini udah gak berlaku lagi.",
+  invite_not_found: "Kode gak ditemukan. Cek lagi penulisannya ya.",
+  reminder_not_found: "Reminder yang diundang udah gak ada.",
+  not_authenticated: "Sesi kamu abis — login lagi ya.",
+};
+
+export async function joinReminderByCode(code: string): Promise<{ reminderId: string; reminderTitle: string }> {
+  const { data, error } = await supabase.rpc("claim_reminder_invite", { p_code: code.trim().toUpperCase() });
+  if (error) throw new Error(JOIN_ERROR_MESSAGES[error.message] ?? "Gagal gabung reminder. Coba lagi ya.");
+  const row = data?.[0];
+  if (!row) throw new Error("Kode gak ditemukan. Cek lagi penulisannya ya.");
+  return { reminderId: row.result_reminder_id, reminderTitle: row.result_reminder_title };
+}
+
+// Minimal checklist/trip details for Event Mode reminder-chain grouping on
+// the Semua page (mirrors the PWA's getChecklistsByIds/getTripsByIds in
+// src/lib/data/queries.ts) — deliberately NOT filtered to the caller's own
+// active/non-trip checklists the way getActiveChecklists is, since a chain
+// can link to a checklist that belongs to a trip or is archived and still
+// needs a title/icon to group under. RLS still scopes visibility.
+export async function getChecklistRefsByIds(ids: string[]): Promise<{ id: string; title: string; icon: string }[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from('checklists')
+    .select('id, title, categories(icon)')
+    .is('deleted_at', null)
+    .in('id', ids);
+  if (error) throw error;
+  return (data as unknown as { id: string; title: string; categories: { icon: string }[] | null }[]).map((c) => ({
+    id: c.id,
+    title: c.title,
+    icon: c.categories?.[0]?.icon || '📅',
+  }));
+}
+
+export async function getTripRefsByIds(ids: string[]): Promise<{ id: string; title: string }[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from('trips').select('id, title').in('id', ids);
+  if (error) throw error;
+  return data;
+}
+
+export async function leaveSharedReminder(reminderId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Belum login.");
+
+  const { error } = await supabase
+    .from("reminder_collaborators")
+    .delete()
+    .eq("reminder_id", reminderId)
+    .eq("user_id", user.id);
   if (error) throw error;
 }

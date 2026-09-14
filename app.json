@@ -31,6 +31,12 @@
         {
           "photosPermission": "Ingatin butuh akses galeri buat pasang foto profil, foto asisten, atau foto trip."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ingatin butuh akses kamera buat scan kode QR undangan."
+        }
       ]
     ]
   }

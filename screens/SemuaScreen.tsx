@@ -1,24 +1,59 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Bell, KeyRound, ListChecks } from 'lucide-react-native';
-import { getAllReminders, setReminderStatus, snoozeReminder, deleteReminder } from '../lib/reminders';
+import { Bell, ChevronDown, KeyRound, ListChecks } from 'lucide-react-native';
+import { getAllReminders, setReminderStatus, joinReminderByCode, getChecklistRefsByIds, getTripRefsByIds } from '../lib/reminders';
 import { getActiveChecklists } from '../lib/checklists';
 import type { Reminder, Checklist } from '../lib/types';
 import ReminderTimeline from '../components/ReminderTimeline';
+import ReminderRow from '../components/ReminderRow';
+import EventReminderGroup from '../components/EventReminderGroup';
 import ChecklistCard from '../components/ChecklistCard';
+import JoinByCodeForm from '../components/JoinByCodeForm';
 import { useTheme, space, radius, fontSize, iconSize, type Theme } from '../lib/theme';
 
 type Tab = 'reminder' | 'checklist';
 
+interface EventGroupRef {
+  title: string;
+  icon: string;
+}
+
+// Mirrors the PWA's groupReminders (src/app/(app)/semua/page.tsx): splits
+// the DONE reminders (only — active ones stay a flat ReminderTimeline) into
+// Event Mode chains (grouped by whichever of linked_checklist_id/
+// linked_trip_id is set, keyed so a checklist id and trip id can't collide)
+// versus plain standalone ones.
+function groupDoneReminders(reminders: Reminder[], refByKey: Map<string, EventGroupRef>) {
+  const standalone: Reminder[] = [];
+  const groups = new Map<string, { ref: EventGroupRef; reminders: Reminder[] }>();
+
+  for (const r of reminders) {
+    const key = r.linked_checklist_id ? `checklist:${r.linked_checklist_id}` : r.linked_trip_id ? `trip:${r.linked_trip_id}` : null;
+    const ref = key ? refByKey.get(key) : undefined;
+    if (key && r.event_stage && ref) {
+      if (!groups.has(key)) groups.set(key, { ref, reminders: [] });
+      groups.get(key)!.reminders.push(r);
+    } else {
+      standalone.push(r);
+    }
+  }
+
+  return { standalone, groups: [...groups.entries()].map(([key, g]) => ({ key, ...g })) };
+}
+
 // Mirrors the PWA's "/semua" page (read off its live DOM): a sticky
 // segmented Reminder/Checklist toggle (with count badges) above a
-// dashed join-by-code card and the list itself.
+// dashed join-by-code card and the list itself. The Reminder tab splits
+// pending vs done reminders exactly like the PWA — done ones collapse into
+// a "N reminder selesai" disclosure with Event Mode chains grouped.
 export default function SemuaScreen() {
   const theme = useTheme();
   const styles = makeStyles(theme);
   const [tab, setTab] = useState<Tab>('reminder');
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [refByKey, setRefByKey] = useState<Map<string, EventGroupRef>>(new Map());
+  const [doneOpen, setDoneOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -26,6 +61,22 @@ export default function SemuaScreen() {
       const [r, c] = await Promise.all([getAllReminders(), getActiveChecklists()]);
       setReminders(r);
       setChecklists(c);
+
+      const map = new Map<string, EventGroupRef>();
+      for (const cl of c) map.set(`checklist:${cl.id}`, { title: cl.title, icon: cl.categories?.icon || '📅' });
+
+      const eventReminders = r.filter((row) => row.event_stage);
+      const missingChecklistIds = [
+        ...new Set(eventReminders.filter((row) => row.linked_checklist_id && !map.has(`checklist:${row.linked_checklist_id}`)).map((row) => row.linked_checklist_id!)),
+      ];
+      const tripIds = [...new Set(eventReminders.filter((row) => row.linked_trip_id).map((row) => row.linked_trip_id!))];
+      const [extraChecklists, trips] = await Promise.all([
+        getChecklistRefsByIds(missingChecklistIds),
+        getTripRefsByIds(tripIds),
+      ]);
+      for (const cl of extraChecklists) map.set(`checklist:${cl.id}`, { title: cl.title, icon: cl.icon });
+      for (const t of trips) map.set(`trip:${t.id}`, { title: t.title, icon: '✈️' });
+      setRefByKey(map);
     } finally {
       setLoading(false);
     }
@@ -36,48 +87,13 @@ export default function SemuaScreen() {
   }, [load]);
 
   async function handleToggleDone(reminder: Reminder) {
-    try {
-      await setReminderStatus(reminder.id, reminder.status === 'done' ? 'pending' : 'done');
-      load();
-    } catch (err) {
-      Alert.alert('Gagal', err instanceof Error ? err.message : 'Gagal mengubah status.');
-    }
+    await setReminderStatus(reminder.id, reminder.status === 'done' ? 'pending' : 'done');
+    load();
   }
 
-  async function handleSnooze(reminder: Reminder) {
-    try {
-      await snoozeReminder(reminder.id, new Date(Date.now() + 10 * 60_000).toISOString());
-      load();
-    } catch (err) {
-      Alert.alert('Gagal', err instanceof Error ? err.message : 'Gagal menunda reminder.');
-    }
-  }
-
-  function handleDelete(reminder: Reminder) {
-    Alert.alert('Hapus reminder?', reminder.title, [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteReminder(reminder.id);
-            load();
-          } catch (err) {
-            Alert.alert('Gagal', err instanceof Error ? err.message : 'Gagal menghapus reminder.');
-          }
-        },
-      },
-    ]);
-  }
-
-  function handleJoinByCode() {
-    // Checklist/reminder invite-code joining isn't wired up yet (only Trip
-    // sharing is, via lib/trips.ts's claim_trip_invite) — the PWA's
-    // equivalent RPCs (claim_checklist_invite/claim_reminder_invite) exist
-    // server-side but this app has no join function calling them yet.
-    Alert.alert('Segera hadir', 'Gabung checklist/reminder pakai kode belum tersedia di sini.');
-  }
+  const pendingReminders = reminders.filter((r) => r.status === 'pending' || r.status === 'snoozed');
+  const doneReminders = reminders.filter((r) => r.status === 'done' || r.status === 'skipped');
+  const doneGrouped = groupDoneReminders(doneReminders, refByKey);
 
   return (
     <View style={styles.container}>
@@ -92,9 +108,9 @@ export default function SemuaScreen() {
           <Text style={[styles.toggleText, tab === 'reminder' ? styles.toggleTextActive : styles.toggleTextInactive]}>
             Reminder
           </Text>
-          {reminders.length > 0 && (
+          {pendingReminders.length > 0 && (
             <View style={[styles.countBadge, tab === 'reminder' && styles.countBadgeActive]}>
-              <Text style={[styles.countBadgeText, tab === 'reminder' && styles.toggleTextActive]}>{reminders.length}</Text>
+              <Text style={[styles.countBadgeText, tab === 'reminder' && styles.toggleTextActive]}>{pendingReminders.length}</Text>
             </View>
           )}
         </Pressable>
@@ -119,19 +135,31 @@ export default function SemuaScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.color.primary} />}
         >
-          <Pressable style={styles.joinCard} onPress={handleJoinByCode}>
-            <KeyRound size={iconSize.sm} color={theme.color.textMuted} />
-            <Text style={styles.joinCardText}>Punya kode undangan? Gabung di sini</Text>
-          </Pressable>
-          {reminders.length === 0 ? (
+          <JoinByCodeForm onJoin={(code) => joinReminderByCode(code).then((r) => ({ title: r.reminderTitle }))} onJoined={load} />
+
+          {pendingReminders.length === 0 ? (
             !loading && <Text style={styles.empty}>Tidak ada reminder aktif.</Text>
           ) : (
-            <ReminderTimeline
-              reminders={reminders}
-              onToggleDone={handleToggleDone}
-              onSnooze={handleSnooze}
-              onDelete={handleDelete}
-            />
+            <ReminderTimeline reminders={pendingReminders} onToggleDone={handleToggleDone} onChanged={load} />
+          )}
+
+          {doneReminders.length > 0 && (
+            <View style={styles.doneSection}>
+              <Pressable style={styles.doneToggle} onPress={() => setDoneOpen((v) => !v)}>
+                <Text style={styles.doneToggleText}>{doneReminders.length} reminder selesai</Text>
+                <ChevronDown size={14} color={theme.color.textMuted} style={doneOpen ? styles.chevronOpen : undefined} />
+              </Pressable>
+              {doneOpen && (
+                <View style={styles.doneList}>
+                  {doneGrouped.groups.map(({ key, ref, reminders: groupReminders }) => (
+                    <EventReminderGroup key={key} title={ref.title} icon={ref.icon} reminders={groupReminders} onChanged={load} />
+                  ))}
+                  {doneGrouped.standalone.map((r) => (
+                    <ReminderRow key={r.id} reminder={r} onToggleDone={() => handleToggleDone(r)} onChanged={load} showDate />
+                  ))}
+                </View>
+              )}
+            </View>
           )}
         </ScrollView>
       ) : (
@@ -139,9 +167,12 @@ export default function SemuaScreen() {
           data={checklists}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
-            <Pressable style={styles.joinCard} onPress={handleJoinByCode}>
+            <Pressable
+              style={styles.checklistJoinStub}
+              onPress={() => Alert.alert('Segera hadir', 'Gabung checklist pakai kode belum tersedia di sini.')}
+            >
               <KeyRound size={iconSize.sm} color={theme.color.textMuted} />
-              <Text style={styles.joinCardText}>Punya kode undangan? Gabung di sini</Text>
+              <Text style={styles.checklistJoinStubText}>Punya kode undangan? Gabung di sini</Text>
             </Pressable>
           }
           ListEmptyComponent={!loading ? <Text style={styles.empty}>Belum ada checklist aktif.</Text> : null}
@@ -217,7 +248,13 @@ function makeStyles(theme: Theme) {
     listContent: {
       padding: space.lg,
     },
-    joinCard: {
+    empty: {
+      textAlign: 'center',
+      color: theme.color.textMuted,
+      fontSize: fontSize.sm,
+      marginTop: space.xl,
+    },
+    checklistJoinStub: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -229,16 +266,30 @@ function makeStyles(theme: Theme) {
       paddingVertical: space.sm + 2,
       marginBottom: space.md,
     },
-    joinCardText: {
+    checklistJoinStubText: {
       fontSize: fontSize.xs,
       fontWeight: '500',
       color: theme.color.textMuted,
     },
-    empty: {
-      textAlign: 'center',
+    doneSection: {
+      marginTop: space.sm,
+    },
+    doneToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.xs,
+      paddingVertical: space.xs,
+    },
+    doneToggleText: {
+      fontSize: fontSize.xs,
       color: theme.color.textMuted,
-      fontSize: fontSize.sm,
-      marginTop: space.xl,
+    },
+    chevronOpen: {
+      transform: [{ rotate: '180deg' }],
+    },
+    doneList: {
+      marginTop: space.sm,
+      gap: space.sm,
     },
   });
 }

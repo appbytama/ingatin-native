@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getMemberNicknames } from "./people";
 import type { Trip, TripMember, TripItineraryItem, TripExpense } from "./types";
 
 // RLS (trips_select) already scopes this to owner OR is_trip_member — no
@@ -89,17 +90,6 @@ export async function getTripDetail(tripId: string): Promise<TripDetail> {
   const nicknames = await getMemberNicknames([...userIds]);
 
   return { trip, members, itinerary, expenses, nicknames };
-}
-
-// Resolves display nicknames via the get_shared_member_nicknames RPC (see
-// D:\APP\ingatin\supabase\migrations\0046_shared_member_nicknames.sql) — a
-// native client can't read another user's auth.users row directly the way
-// the PWA's server-side resolveNickname() does with the admin client.
-export async function getMemberNicknames(userIds: string[]): Promise<Record<string, string>> {
-  if (userIds.length === 0) return {};
-  const { data, error } = await supabase.rpc("get_shared_member_nicknames", { p_user_ids: userIds });
-  if (error) throw error;
-  return Object.fromEntries((data as { user_id: string; nickname: string }[]).map((r) => [r.user_id, r.nickname]));
 }
 
 export async function createTripInvite(tripId: string): Promise<string> {

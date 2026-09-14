@@ -20,13 +20,11 @@ function groupByDate(reminders: Reminder[]) {
 export default function ReminderTimeline({
   reminders,
   onToggleDone,
-  onSnooze,
-  onDelete,
+  onChanged,
 }: {
   reminders: Reminder[];
   onToggleDone: (reminder: Reminder) => void;
-  onSnooze: (reminder: Reminder) => void;
-  onDelete: (reminder: Reminder) => void;
+  onChanged: () => void;
 }) {
   const theme = useTheme();
   const styles = makeStyles(theme);
@@ -51,13 +49,7 @@ export default function ReminderTimeline({
               )}
             </View>
             {group.items.map((item) => (
-              <ReminderRow
-                key={item.id}
-                reminder={item}
-                onToggleDone={() => onToggleDone(item)}
-                onSnooze={() => onSnooze(item)}
-                onDelete={() => onDelete(item)}
-              />
+              <ReminderRow key={item.id} reminder={item} onToggleDone={() => onToggleDone(item)} onChanged={onChanged} />
             ))}
           </View>
         );
