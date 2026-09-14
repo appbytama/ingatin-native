@@ -40,6 +40,7 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
   const initial = nickname.charAt(0).toUpperCase();
   const profileAvatarUrl = (session.user.user_metadata?.avatar_url as string | undefined) || null;
   const assistantAvatarUrl = (session.user.user_metadata?.assistant_avatar_url as string | undefined) || null;
+  const assistantName = (session.user.user_metadata?.assistant_name as string | undefined) || 'Ingatin';
 
   function handleNavigateToRef(ref: ChatMessageRef) {
     setBabelOpen(false);
@@ -106,7 +107,9 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
         </Pressable>
       </View>
 
-      {!babelOpen && <BabelFab onPress={openBabel} bottomInset={insets.bottom} avatarUrl={assistantAvatarUrl} />}
+      {!babelOpen && (
+        <BabelFab onPress={openBabel} bottomInset={insets.bottom} avatarUrl={assistantAvatarUrl} assistantName={assistantName} />
+      )}
 
       <Modal visible={babelOpen} transparent animationType="slide" onRequestClose={closeBabel}>
         <View style={styles.modalRoot}>
@@ -114,6 +117,8 @@ export default function AuthenticatedApp({ session }: { session: Session }) {
           <View style={[styles.modalSheet, { paddingBottom: insets.bottom }]}>
             <BabelPanel
               userId={session.user.id}
+              nickname={nickname}
+              assistantName={assistantName}
               assistantAvatarUrl={assistantAvatarUrl}
               onClose={closeBabel}
               onNavigateToRef={handleNavigateToRef}

@@ -27,3 +27,20 @@ export async function sendAssistantMessage(
   if (error) throw error;
   return data;
 }
+
+// Mirrors the PWA's deleteChatHistory server action — a plain RLS-scoped
+// soft-delete, no service role needed, so native calls it directly.
+export async function deleteChatHistory() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Belum login.");
+
+  const { error } = await supabase
+    .from("chat_messages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .is("deleted_at", null);
+
+  if (error) throw error;
+}

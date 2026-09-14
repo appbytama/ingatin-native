@@ -1,15 +1,47 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Image, PanResponder, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, PanResponder, Pressable, StyleSheet, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Bell } from 'lucide-react-native';
 import LivingFabAura from './LivingFabAura';
-import { useTheme } from '../lib/theme';
+import { useTheme, space, radius, fontSize, type Theme } from '../lib/theme';
 
 const STORAGE_KEY = 'ingatin:fab-position';
 const BUTTON_SIZE = 56;
 const MARGIN = 12;
 const DRAG_THRESHOLD = 6;
+const BUBBLE_WIDTH = 190;
+
+// Verbatim port of the PWA's BUBBLE_POOL (assistant-fab.tsx) — a wide,
+// mixed pool so the idle bubble reads like a living assistant with things
+// to say, not a bot cycling through the same "tap here" hint.
+const BUBBLE_POOL = [
+  'Tap buat ngobrol sama aku',
+  'Ada yang mau diinget?',
+  'Butuh bantuan? Tinggal tap',
+  'Kalau bingung mulai dari mana, tap aja',
+  'Hari ini udah checklist belum?',
+  'Yuk cerita, aku dengerin',
+  'Aku standby terus di sini',
+  'Udah makan belum?',
+  'Minum air putih dulu, yuk',
+  'Jangan lupa istirahat juga',
+  'Lagi sibuk apa nih?',
+  'Udah duduk lama, coba renggangin badan',
+  'Semangat ya hari ini 💪',
+  'Satu langkah kecil, tetep langkah',
+  'Kamu udah keren, jalanin aja pelan-pelan',
+  'Capek boleh, nyerah jangan',
+  'Hari yang berat juga tetap hari yang kamu lewatin',
+  'Progres kecil tetap progres',
+  'Aku robot, tapi peduli 🤖',
+  'Kalau kamu lupa, aku inget. Tugasku emang gitu 😄',
+  'Aku ga pernah ngantuk, enak ya jadi aku',
+  'Baterai aku ga pernah abis, punyamu gimana?',
+  'Santai aja, aku bantuin',
+  'Ada cerita seru hari ini?',
+  'Kadang diem-diem aja udah cukup, aku tetep di sini',
+];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), Math.max(min, max));
@@ -76,12 +108,15 @@ export default function BabelFab({
   onPress,
   bottomInset,
   avatarUrl,
+  assistantName,
 }: {
   onPress: () => void;
   bottomInset: number;
   avatarUrl?: string | null;
+  assistantName: string;
 }) {
   const theme = useTheme();
+  const styles = makeStyles(theme);
   const { width, height } = Dimensions.get('window');
   const maxX = width - BUTTON_SIZE - MARGIN;
   const maxY = height - BUTTON_SIZE - MARGIN;
@@ -91,6 +126,7 @@ export default function BabelFab({
   const [pos, setPos] = useState(defaultPos);
   const startPos = useRef(defaultPos);
   const dragged = useRef(false);
+  const [bubble, setBubble] = useState<string | null>(null);
 
   const floatAnim = useRef(new Animated.Value(0)).current;
   const heartbeatAnim = useRef(new Animated.Value(1)).current;
@@ -117,6 +153,48 @@ export default function BabelFab({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Periodic idle speech bubble, verbatim timing from the PWA: an intro
+  // line 1.5s after mount, then a random non-repeating pool line shown for
+  // 3.8-6s at a time with an 8-25s gap between — randomized so it never
+  // settles into a predictable cycle. Reset happens for free here since
+  // this whole component unmounts when the panel opens (AuthenticatedApp
+  // only renders BabelFab while !babelOpen), unlike the PWA which has to
+  // explicitly clear its bubble state on open.
+  const lastBubbleRef = useRef<string | null>(null);
+  useEffect(() => {
+    let hideTimer: ReturnType<typeof setTimeout>;
+    let nextTimer: ReturnType<typeof setTimeout>;
+
+    function pickLine() {
+      const options = BUBBLE_POOL.filter((line) => line !== lastBubbleRef.current);
+      const line = options[Math.floor(Math.random() * options.length)];
+      lastBubbleRef.current = line;
+      return line;
+    }
+
+    function showFor(text: string) {
+      setBubble(text);
+      const visibleFor = 3800 + Math.random() * 2200;
+      hideTimer = setTimeout(() => {
+        setBubble(null);
+        scheduleNext();
+      }, visibleFor);
+    }
+
+    function scheduleNext() {
+      const gap = 8000 + Math.random() * 17_000;
+      nextTimer = setTimeout(() => showFor(pickLine()), gap);
+    }
+
+    const startTimer = setTimeout(() => showFor(`Hi, aku ${assistantName} 👋`), 1500);
+
+    return () => {
+      clearTimeout(startTimer);
+      clearTimeout(hideTimer);
+      clearTimeout(nextTimer);
+    };
+  }, [assistantName]);
 
   function updatePos(next: { x: number; y: number }) {
     posRef.current = next;
@@ -168,10 +246,26 @@ export default function BabelFab({
   const floatY = floatAnim.interpolate({ inputRange: floatSteps, outputRange: FLOAT_WAYPOINTS.map((p) => p[1]) });
   const sweepTranslate = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-BUTTON_SIZE, BUTTON_SIZE] });
 
+  const showBelow = pos.y < 140;
+  const bubbleLeft = clamp(pos.x + BUTTON_SIZE / 2 - BUBBLE_WIDTH / 2, MARGIN, width - BUBBLE_WIDTH - MARGIN);
+
   return (
-    <Animated.View
-      style={[styles.wrap, { left: pos.x, top: pos.y, transform: [{ translateX: floatX }, { translateY: floatY }] }]}
-    >
+    <>
+      {bubble && (
+        <Pressable
+          style={[
+            styles.bubble,
+            { left: bubbleLeft, width: BUBBLE_WIDTH },
+            showBelow ? { top: pos.y + BUTTON_SIZE + 10 } : { bottom: height - pos.y + 10 },
+          ]}
+          onPress={onPress}
+        >
+          <Text style={styles.bubbleText}>{bubble}</Text>
+        </Pressable>
+      )}
+      <Animated.View
+        style={[styles.wrap, { left: pos.x, top: pos.y, transform: [{ translateX: floatX }, { translateY: floatY }] }]}
+      >
       <LivingFabAura size={BUTTON_SIZE} />
       <Animated.View
         style={[styles.fab, { backgroundColor: theme.color.primary, transform: [{ scale: heartbeatAnim }] }]}
@@ -193,11 +287,13 @@ export default function BabelFab({
           <Bell size={24} color={theme.color.onPrimary} />
         )}
       </Animated.View>
-    </Animated.View>
+      </Animated.View>
+    </>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(theme: Theme) {
+  return StyleSheet.create({
   wrap: {
     position: 'absolute',
     width: BUTTON_SIZE,
@@ -229,4 +325,24 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-});
+  bubble: {
+    position: 'absolute',
+    zIndex: 49,
+    backgroundColor: theme.color.surface,
+    borderRadius: radius.sheet,
+    paddingHorizontal: space.sm + 2,
+    paddingVertical: space.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  bubbleText: {
+    fontSize: fontSize.xs,
+    fontWeight: '500',
+    color: theme.color.text,
+    textAlign: 'left',
+  },
+  });
+}

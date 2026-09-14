@@ -61,6 +61,16 @@ export function formatDateHeader(dateKey: string): string {
   return dateHeaderFormatter.format(new Date(`${dateKey}T12:00:00+07:00`));
 }
 
+/** "08:00" for a message sent today, "14 Sep, 08:00" otherwise — mirrors
+ *  the PWA's formatMessageTime (assistant-fab.tsx) shown under each chat
+ *  bubble. */
+export function formatMessageTime(iso: string): string {
+  const key = jakartaDateKey(iso);
+  const today = jakartaDateKey(new Date().toISOString());
+  if (key === today) return dateTimeFormatter.format(new Date(iso));
+  return `${dayMonthFormatter.format(new Date(iso))}, ${dateTimeFormatter.format(new Date(iso))}`;
+}
+
 /** "Hari ini" / "Besok" badge, or null for anything further out — matches
  *  the PWA's date-group header (only these two relative labels observed). */
 export function relativeDayLabel(dateKey: string): string | null {
