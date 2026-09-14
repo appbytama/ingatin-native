@@ -68,20 +68,19 @@ export default function BabelFab({ onPress, bottomInset }: { onPress: () => void
         startPos.current = posRef.current;
       },
       onPanResponderMove: (_, gesture) => {
-        if (Math.hypot(gesture.dx, gesture.dy) > DRAG_THRESHOLD) dragged.current = true;
+        if (!dragged.current && Math.hypot(gesture.dx, gesture.dy) < DRAG_THRESHOLD) return;
+        dragged.current = true;
         updatePos({
           x: clamp(startPos.current.x + gesture.dx, MARGIN, maxX),
           y: clamp(startPos.current.y + gesture.dy, MARGIN, maxY),
         });
       },
-      onPanResponderRelease: (_, gesture) => {
-        const finalPos = {
-          x: clamp(startPos.current.x + gesture.dx, MARGIN, maxX),
-          y: clamp(startPos.current.y + gesture.dy, MARGIN, maxY),
-        };
-        updatePos(finalPos);
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(finalPos)).catch(() => {});
-        if (!dragged.current) onPress();
+      onPanResponderRelease: () => {
+        if (dragged.current) {
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(posRef.current)).catch(() => {});
+        } else {
+          onPress();
+        }
       },
     })
   ).current;
